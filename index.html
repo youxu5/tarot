@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>⌈翠玉录⌋ · 塔罗占卜</title>
+<!-- 微信聊天里分享时的卡片：标题、描述、缩略图 -->
+<meta name="description" content="翻开翠玉录，抽一张属于你的塔罗。">
+<meta property="og:title" content="⌈翠玉录⌋ · 塔罗占卜">
+<meta property="og:description" content="翻开翠玉录，抽一张属于你的塔罗。">
+<meta property="og:image" content="assets/home.jpg">
+<meta name="theme-color" content="#0d1420">
+<link rel="stylesheet" href="css/style.css?v=36">
+</head>
+<body>
+
+<!-- ================= 第一页 · 首页 ================= -->
+<section id="page-home" class="page active">
+  <div class="home-bg"></div>
+  <!-- 卡牌柔光：按四个角点画的多边形，完全贴合照片里牌的透视走向。
+       角点在 js/config.js 的 home.glowCorners 里调（百分比，顺序：左上/右上/右下/左下） -->
+  <svg id="home-glow" class="home-glow" viewBox="0 0 100 100" preserveAspectRatio="none">
+    <polygon id="glow-poly" class="glow-poly" points="" />
+  </svg>
+</section>
+
+<!-- ================= 第二页 · 抽牌页 ================= -->
+<section id="page-draw" class="page">
+  <div class="draw-bg"></div>
+  <!-- 液化玻璃层：磨砂 + 流动的液态高光 -->
+  <div class="draw-glass"></div>
+  <div class="draw-scrim"></div>
+  <!-- 颗粒层：本身几乎看不见，但雾化玻璃盖上来时，被模糊的颗粒就变成了磨砂质感 -->
+  <div class="draw-grain"></div>
+  <!-- 出牌瞬间盖上的雾化玻璃（背景模糊 + 压暗 + 玻璃反光） -->
+  <div id="draw-frost" class="draw-frost"></div>
+
+  <h1 class="draw-title">⌈翠玉录⌋</h1>
+  <p class="draw-sub">EMERALD TABLET · TAROT</p>
+
+  <div class="avatar-wrap">
+    <div id="avatar" class="avatar">
+      <div class="avatar-core">
+        <img src="assets/avatar-boy.jpg?v=1" alt="avatar">
+      </div>
+    </div>
+  </div>
+    </div    </div>
+  </div>
+
+  <!-- 淡紫金属六芒星 · 抽牌按钮 -->
+  <div id="hexagram" class="hexagram" title="点击抽取一张塔罗牌">
+    <svg viewBox="0 0 240 264" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <!-- 淡紫金属：明暗交替的四段渐变，拉出金属反光 -->
+        <linearGradient id="violetHex" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0"   stop-color="#F3EAFF"/>
+          <stop offset=".24" stop-color="#C9A0DC"/>
+          <stop offset=".48" stop-color="#8E5FBB"/>
+          <stop offset=".72" stop-color="#DCC2EE"/>
+          <stop offset="1"   stop-color="#A87ED0"/>
+        </linearGradient>
+      </defs>
+      <g fill="none" stroke="url(#violetHex)" stroke-width="7" stroke-linejoin="round">
+        <path d="M120 22 L216 190 L24 190 Z"/>
+        <path d="M120 242 L24 74 L216 74 Z"/>
+      </g>
+      <circle cx="120" cy="132" r="8" fill="#C9A0DC"/>
+    </svg>
+  </div>
+
+  <!-- 抽牌结果（点击六芒星后出现，尺寸在 config.js 的 draw.cardWidth 里调） -->
+  <div id="result-card" class="result-card">
+    <div class="result-inner">
+      <div class="result-face">
+        <div class="rc-numeral" id="rc-numeral"></div>
+        <div class="rc-art" id="rc-art"></div>
+        <div class="rc-band">
+          <div class="rc-name" id="rc-name"></div>
+          <div class="rc-sub">
+            <span class="rc-en" id="rc-en"></span>
+            <span class="rc-sep">·</span>
+            <span class="rc-pos" id="rc-pos"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<!-- ================= 第三页 · 翻牌页 ================= -->
+<section id="page-reveal" class="page">
+  <div class="reveal-bg"></div>
+  <div class="reveal-tint"></div>
+
+  <!-- 半透明玫瑰十字背景水印 -->
+  <div id="rose-cross-watermark" class="rose-cross-watermark">
+    <svg viewBox="0 0 620 800" xmlns="http://www.w3.org/2000/svg">
+      <path d="M310 30 L310 770" stroke="#E8C878" stroke-width="22"/>
+      <path d="M80 300 L540 300" stroke="#E8C878" stroke-width="22"/>
+      <path d="M310 30 L292 66 L328 66 Z" fill="#E8C878"/>
+      <path d="M310 770 L292 734 L328 734 Z" fill="#E8C878"/>
+      <path d="M80 300 L116 282 L116 318 Z" fill="#E8C878"/>
+      <path d="M540 300 L504 282 L504 318 Z" fill="#E8C878"/>
+      <circle cx="310" cy="300" r="92" stroke="#E8C878" stroke-width="6" fill="none"/>
+      <g stroke="#E8C878" stroke-width="3" fill="none">
+        <ellipse cx="310" cy="238" rx="20" ry="34"/>
+        <ellipse cx="310" cy="362" rx="20" ry="34"/>
+        <ellipse cx="248" cy="300" rx="34" ry="20"/>
+        <ellipse cx="372" cy="300" rx="34" ry="20"/>
+        <ellipse cx="266" cy="256" rx="26" ry="26"/>
+        <ellipse cx="354" cy="256" rx="26" ry="26"/>
+        <ellipse cx="266" cy="344" rx="26" ry="26"/>
+        <ellipse cx="354" cy="344" rx="26" ry="26"/>
+      </g>
+      <circle cx="310" cy="300" r="24" fill="#E8C878"/>
+    </svg>
+  </div>
+
+  <!-- 2×2 牌阵 -->
+  <div id="card-grid" class="card-grid"></div>
+
+  <!-- 中央金色玫瑰十字封印 -->
+  <div id="seal" class="seal">
+    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="sealGold" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#fff6d2"/>
+          <stop offset=".3" stop-color="#e8c76a"/>
+          <stop offset=".62" stop-color="#a97c22"/>
+          <stop offset="1" stop-color="#f2d894"/>
+        </linearGradient>
+        <linearGradient id="sealGoldDeep" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#dcb85b"/>
+          <stop offset="1" stop-color="#7d5a14"/>
+        </linearGradient>
+      </defs>
+      <circle cx="50" cy="50" r="44" fill="none" stroke="url(#sealGold)" stroke-width="2.4"/>
+      <circle cx="50" cy="50" r="38.5" fill="none" stroke="url(#sealGold)" stroke-width=".9" opacity=".6"/>
+      <path d="M43 12 H57 V43 H88 V57 H57 V88 H43 V57 H12 V43 H43 Z"
+            fill="url(#sealGold)" stroke="url(#sealGoldDeep)" stroke-width="1.2"/>
+      <circle cx="50" cy="15" r="1.8" fill="url(#sealGold)"/>
+      <circle cx="85" cy="50" r="1.8" fill="url(#sealGold)"/>
+      <circle cx="50" cy="85" r="1.8" fill="url(#sealGold)"/>
+      <circle cx="15" cy="50" r="1.8" fill="url(#sealGold)"/>
+      <g transform="translate(50 50)" fill="url(#sealGold)" stroke="url(#sealGoldDeep)" stroke-width=".9">
+        <ellipse rx="7.6" ry="5.6" cy="-11"/>
+        <ellipse rx="7.6" ry="5.6" cy="-11" transform="rotate(60)"/>
+        <ellipse rx="7.6" ry="5.6" cy="-11" transform="rotate(120)"/>
+        <ellipse rx="7.6" ry="5.6" cy="-11" transform="rotate(180)"/>
+        <ellipse rx="7.6" ry="5.6" cy="-11" transform="rotate(240)"/>
+        <ellipse rx="7.6" ry="5.6" cy="-11" transform="rotate(300)"/>
+        <circle r="4.6" fill="url(#sealGoldDeep)" stroke="none"/>
+        <circle r="2" fill="#fff3c4" stroke="none" opacity=".9"/>
+      </g>
+    </svg>
+  </div>
+
+  <div id="reveal-final" class="reveal-final"></div>
+
+  <!-- 翻牌页限定：小雪（只在翻牌页下，其他页面不下） -->
+  <div id="snow" class="snow" aria-hidden="true"></div>
+
+  <!-- 底部三块罗马数字金属牌（内容在 config.js 的 reveal.gates 里改） -->
+  <nav id="roman-bar" class="roman-bar" aria-label="卷章入口"></nav>
+
+  <!-- 战车弹窗：文件夹 + 缓缓生出的文字（点「战车」牌触发） -->
+  <div id="chariot-pop" class="chariot-pop" aria-hidden="true">
+    <p id="chariot-text" class="chariot-text"></p>
+    <button id="chariot-folder" class="chariot-folder" type="button" title="打开文件夹" aria-hidden="true" tabindex="-1">
+      <span class="cf-tab"></span>
+      <span class="cf-body">
+        <svg viewBox="0 0 24 24" class="cf-seal" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">          <path d="M12 3 L14.4 9.6 L21 10 L16 14.2 L17.8 21 L12 17.2 L6.2 21 L8 14.2 L3 10 L9.6 9.6 Z" fill="currentColor"/>
+        </svg>
+      </span>
+    </button>
+  </div>
+
+  <!-- 星币国王：3D 星币洒落堆叠的舞台层（点币堆后弹出下面的弹窗） -->
+  <div id="pentacles-stage" class="pentacles-stage" aria-hidden="true">
+    <!-- 背景：模糊液态的东欧冬景 -->
+    <div class="pt-landscape"></div>
+    <div class="pile-glow"></div>
+    <div class="pt-hint">轻点星币</div>
+  </div>
+
+  <!-- 星币国王弹窗：蓝白浮雕椭圆画框（点币堆后由小到大弹出，点任意处收回） -->
+  <div id="pentacles-pop" class="pentacles-pop" aria-hidden="true">
+    <div class="pentacles-frame">
+      <img class="pentacles-frame-img" src="assets/pentacles-frame.png" alt="">
+      <!-- 星币币面共用金色渐变 -->
+      <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+        <defs>
+          <radialGradient id="pc-gold" cx=".35" cy=".3" r=".95">
+            <stop offset="0"   stop-color="#fff3c4"/>
+            <stop offset=".45" stop-color="#f2cd76"/>
+            <stop offset=".8"  stop-color="#d9a63e"/>
+            <stop offset="1"   stop-color="#a97c1d"/>
+          </radialGradient>
+        </defs>
+      </svg>
+      <div class="pentacles-opening">
+        <p id="pentacles-text" class="pentacles-text"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 圣杯国王：金杯注酒舞台（金壶倒入蜜酒 → 退场 → 哥特黑框照片浮现，点任意处收回） -->
+  <div id="cups-stage" class="cups-stage" aria-hidden="true">
+    <div class="cup-glass"></div>
+    <div class="cup-scene">
+      <!-- 金壶（右上入场，倾斜倒酒，再退回去） -->
+      <svg class="cup-jug" viewBox="0 0 150 160" aria-hidden="true">
+        <defs>
+          <linearGradient id="cups-jug-gold" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#fff2bd"/>
+            <stop offset=".45" stop-color="#e8b845"/>
+            <stop offset=".75" stop-color="#a3730f"/>
+            <stop offset="1" stop-color="#6d4a0a"/>
+          </linearGradient>
+        </defs>
+        <!-- 壶身 -->
+        <path d="M40 58 C24 74 24 108 44 122 C60 134 92 134 106 120 C118 108 118 76 102 60 C94 52 86 48 74 48 C62 48 50 50 40 58 Z"
+              fill="url(#cups-jug-gold)" stroke="#5d3f0b" stroke-width="3"/>
+        <!-- 流口（朝右下，对准杯口） -->
+        <path d="M98 58 L134 32 C141 27 148 35 143 41 L120 68 Z"
+              fill="url(#cups-jug-gold)" stroke="#5d3f0b" stroke-width="2.5" stroke-linejoin="round"/>
+        <!-- 壶柄（左侧） -->
+        <path d="M42 62 C16 66 15 102 41 113" fill="none" stroke="url(#cups-jug-gold)" stroke-width="9" stroke-linecap="round"/>
+        <!-- 盖钮 -->
+        <ellipse cx="72" cy="46" rx="11" ry="5.5" fill="url(#cups-jug-gold)" stroke="#5d3f0b" stroke-width="2"/>
+        <!-- 高光 -->
+        <path d="M50 68 C40 80 40 102 50 112" stroke="rgba(255,246,200,.75)" stroke-width="5" fill="none" stroke-linecap="round"/>
+      </svg>
+      <!-- 倒出的酒线 -->
+      <div class="cup-stream"></div>
+      <!-- 金杯（酒液在杯膛里升起） -->
+      <svg class="cup-chalice" viewBox="0 0 140 170" aria-hidden="true">
+        <defs>
+          <linearGradient id="cups-cup-gold" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#fff2bd"/>
+            <stop offset=".45" stop-color="#e8b845"/>
+            <stop offset=".75" stop-color="#a3730f"/>
+            <stop offset="1" stop-color="#6d4a0a"/>
+          </linearGradient>
+          <linearGradient id="cups-wine-g" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#f6cd74"/>
+            <stop offset=".5" stop-color="#dfa02f"/>
+            <stop offset="1" stop-color="#b57516"/>
+          </linearGradient>
+          <clipPath id="cups-bowlclip">
+            <path d="M20 28 L120 28 C116 78 95 100 70 100 C45 100 24 78 20 28 Z"/>
+          </clipPath>
+        </defs>
+        <!-- 蜜酒：默认沉在杯底之外，注酒时升起 -->
+        <g clip-path="url(#cups-bowlclip)">
+          <rect class="cup-wine" x="16" y="30" width="108" height="86" fill="url(#cups-wine-g)"/>
+          <ellipse class="cup-wine-surface" cx="70" cy="112" rx="50" ry="7" fill="#ffe9a8" opacity=".85"/>
+        </g>
+        <!-- 杯身描边 -->
+        <path d="M14 26 L126 26 C120 84 97 108 70 108 C43 108 20 84 14 26 Z"
+              fill="none" stroke="url(#cups-cup-gold)" stroke-width="7" stroke-linejoin="round"/>
+        <!-- 杯沿 -->
+        <ellipse cx="70" cy="26" rx="56" ry="9" fill="url(#cups-cup-gold)" stroke="#5d3f0b" stroke-width="1.5"/>
+        <ellipse cx="70" cy="26" rx="47" ry="5.5" fill="#2c1d05" opacity=".8"/>
+        <!-- 杯柄 -->
+        <path d="M62 106 L57 138 L83 138 L78 106 Z" fill="url(#cups-cup-gold)" stroke="#5d3f0b" stroke-width="1.5"/>
+        <!-- 底座 -->
+        <path d="M42 140 C42 132 98 132 98 140 L105 152 C105 159 35 159 35 152 Z" fill="url(#cups-cup-gold)" stroke="#5d3f0b" stroke-width="1.5"/>
+        <!-- 杯身高光 -->
+        <path d="M32 36 C36 60 46 80 56 88" stroke="rgba(255,246,200,.7)" stroke-width="4" fill="none" stroke-linecap="round"/>
+      </svg>
+      <!-- 杯底光晕 -->
+      <div class="cup-halo"></div>
+    </div>
+    <!-- 照片堆叠层：垫在主照片下面的两张错位黑框，出堆叠感 -->
+    <div class="cup-stack-layers" data-turn="0" aria-hidden="true">
+      <div class="cup-under u1"></div>
+      <div class="cup-under u2"></div>
+    </div>
+    <!-- 哥特黑框照片 -->
+    <div class="cup-photo">
+      <svg class="cp-crest" viewBox="0 0 60 42" aria-hidden="true">
+        <path d="M30 40 C30 26 22 22 22 13 C22 6 26 2 30 2 C34 2 38 6 38 13 C38 22 30 26 30 40 Z"
+              fill="#141219" stroke="#9c95b5" stroke-width="1.4"/>
+        <circle cx="30" cy="11" r="2.6" fill="#c3bcd9"/>
+      </svg>
+      <svg class="cp-corner tl" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M2 22 L2 8 L8 2 L22 2" fill="none" stroke="#9c95b5" stroke-width="2"/>
+        <circle cx="5" cy="5" r="2.2" fill="#c3bcd9"/>
+      </svg>
+      <svg class="cp-corner tr" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M2 22 L2 8 L8 2 L22 2" fill="none" stroke="#9c95b5" stroke-width="2"/>
+        <circle cx="5" cy="5" r="2.2" fill="#c3bcd9"/>
+      </svg>
+      <svg class="cp-corner bl" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M2 22 L2 8 L8 2 L22 2" fill="none" stroke="#9c95b5" stroke-width="2"/>
+        <circle cx="5" cy="5" r="2.2" fill="#c3bcd9"/>
+      </svg>
+      <svg class="cp-corner br" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M2 22 L2 8 L8 2 L22 2" fill="none" stroke="#9c95b5" stroke-width="2"/>
+        <circle cx="5" cy="5" r="2.2" fill="#c3bcd9"/>
+      </svg>
+      <img class="cup-photo-img" src="" alt="回忆">
+      <!-- 文字卡：两张照片中间夹的一句话（内容在 config 的 cupPhotos 里配） -->
+      <div class="cup-photo-text"></div>
+      <!-- 右下角切换角标：点一下换下一张 -->
+      <div class="cup-photo-next" title="下一张">→</div>
+    </div>
+    <div class="cup-hint">轻点任意处</div>
+    <!-- 照片堆下面：夹在中间的一句话 + 老板专属自定义上传画布（口令在 config 里改） -->
+    <div class="cup-gap-line"></div>
+    <div class="cup-upload" title="">
+      <div class="cu-stamp"></div>
+      <div class="cu-divider"></div>
+      <div class="cu-empty"><span class="cu-plus">＋</span><span class="cu-tip">上传照片</span></div>
+      <img class="cu-img" alt="上传的照片">
+      <div class="cu-lock"><input class="cu-pass" type="password" inputmode="numeric" maxlength="12" placeholder="输入口令"><button class="cu-ok" type="button">确定</button></div>
+      <div class="cu-clear" title="移除照片">✕</div>
+      <input class="cu-file" type="file" accept="image/*" style="display:none">
+    </div>
+  </div>
+</section>
+
+<!-- ================= 第四页 · 卷 I（点罗马数字 I 进入） ================= -->
+<section id="page-chapter1" class="page">
+  <div class="reveal-bg chapter-bg"></div>
+  <div class="reveal-tint"></div>
+  <div class="chapter-frost"></div>
+  <div id="snow-chapter" class="snow snow-heavy"></div>
+
+  <button id="chapter-back" class="ghost-btn" type="button" aria-label="返回牌阵"><span class="back-label"><span class="back-arrow">←</span>BACK</span></button>
+
+  <div class="chapter-inner">
+    <div class="chapter-gallery" id="chapter-gallery"></div>
+  </div>
+</section>
+
+<!-- ================= 第五页 · 卷 I · 燃烧的羊皮纸（权杖国王自动进入） ================= -->
+<section id="page-scroll" class="page">
+  <!-- 舞台：烧毁时对整个舞台做渐变遮罩（从左下往右上吃掉） -->
+  <div id="scroll-stage" class="scroll-stage">
+    <!-- 底层：带火焰的羊皮纸（点燃后才显露） -->
+    <div class="scroll-bg"></div>
+    <!-- 顶层：修复干净的羊皮纸（初始只见这张，点燃时淡出） -->
+    <div class="scroll-clean"></div>
+    <!-- 纸面正中的心形花纹：像直接印在羊皮纸上的一枚纹章水印 -->
+    <img class="scroll-ornament" src="assets/heart-ornament.png" alt="">
+    <div class="scroll-dim"></div>
+    <!-- 右侧一行一行浮现的横线（行数在 config.js 的 scroll.lineCount） -->
+    <div id="scroll-lines" class="scroll-lines"></div>
+  </div>
+  <!-- 烧过的区域留下的灰烬层（遮罩与羊皮纸相反：只显示已烧掉的部分） -->
+  <div id="scroll-ash" class="scroll-ash" hidden></div>
+  <!-- 燃烧边光线：与遮罩同步推进，压在舞台之上 -->
+  <div id="burn-line" class="burn-line" hidden></div>
+
+  <!-- 左上角权杖图片框：先浮现，点击点燃羊皮纸 -->
+  <button id="wand" class="wand" type="button" title="点燃羊皮纸">
+    <img src="assets/wand-ink.png" alt="权杖印纹">
+  </button>
+
+  <!-- 右上角对话：权杖浮现之后出现 -->
+  <div id="scroll-dialogue" class="scroll-dialogue">
+    <p class="sd-q"></p>
+    <p class="sd-a"></p>
+  </div>
+
+  <button id="scroll-back" class="ghost-btn scroll-back" type="button" aria-label="返回牌阵"><span class="back-label"><span class="back-arrow">←</span>BACK</span></button>
+</section>
+
+<!-- ================= 第六页 · 宝剑卷（宝剑国王自动进入） ================= -->
+<section id="page-sword" class="page">
+  <div class="sword-bg"></div>
+
+  <div class="sword-scene">
+    <!-- 整体的灰紫巴洛克画框：剑和左右文字位都在框内开孔里 -->
+    <div class="sword-frame-wrap">
+      <img class="sword-frame-img" src="assets/frame-graypurple.png" alt="">
+      <div class="sword-opening">
+        <div class="sword-veil"></div>
+        <div class="sword-panel sword-panel-l"></div>
+        <div class="sword-panel sword-panel-r"></div>
+        <!-- 银色雕花宝剑（剑尖向下），寒光自上而下现身 -->
+        <img class="sword-art" src="assets/sword-ornate.png" alt="宝剑">
+        <!-- 剑尖下方的两行誓词 -->
+        <div id="sword-vow" class="sword-vow"></div>
+      </div>
+    </div>
+  </div>
+
+  <button id="sword-back" class="ghost-btn" type="button" aria-label="返回牌阵"><span class="back-label"><span class="back-arrow">←</span>BACK</span></button>
+  <div id="snow-sword" class="snow snow-heavy" aria-hidden="true"></div>
+</section>
+
+<!-- ================= 全局 · 左下角音乐鸟 ================= -->
+<button id="music-bird" class="music-bird" type="button" title="音乐">
+  <!-- 直接用抠好的紫色鸟（透明背景） -->
+  <img src="assets/bird-real.png" alt="音乐鸟">
+</button>
+
+<!-- 燃烧粒子画布：全屏固定层，只在烧毁时启用 -->
+<canvas id="burn-fx"></canvas>
+
+<!-- 冷冬滤镜：全站罩一层薄薄的蓝灰冷纱（不挡任何点击） -->
+<div id="cold-veil" aria-hidden="true"></div>
+
+<script src="js/config.js?v=7"></script>
+<script src="js/cards.js"></script>
+<script src="js/app.js?v=8"></script>
+<!-- UI 元素位置/大小调试面板：按 P 键或点右下角 ⚙ 打开。发布前删掉这一行即可隐藏 -->
+</body>
+</html>
