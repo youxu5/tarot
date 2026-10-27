@@ -1047,7 +1047,7 @@
     <div class="ss-stack">
       <div class="ss-frame">
         <i class="ss-c tl"></i><i class="ss-c tr"></i><i class="ss-c bl"></i><i class="ss-c br"></i>
-        <div class="ss-title"><canvas class="px-canvas" data-text="开始交集" data-fs="13" data-scale="1.8" data-color="#ffffff" data-slack="1.04" data-snap="1"></canvas></div>
+        <div class="ss-title"><canvas class="px-canvas" data-text="开始交集" data-fs="15" data-scale="1.56" data-color="#ffffff" data-slack="1.04" data-snap="1"></canvas></div>
       </div>
       <div class="ss-sub">TAP TO START</div>
     </div>
@@ -2008,8 +2008,10 @@
           var col = (cv.getAttribute('data-color') || '#111111').replace('#','');
           if(col.length === 3) col = col[0]+col[0]+col[1]+col[1]+col[2]+col[2];
           var cr = parseInt(col.substr(0,2),16), cg = parseInt(col.substr(2,2),16), cb = parseInt(col.substr(4,2),16);
+          /* 阈值 48：手机渲染器（微信 XWeb 等）在低分辨率下细笔画 alpha 常不足 90，
+             阈值过高会把「集/至」这类字抹得看不清；48 保住笔画，仍无灰色软边 */
           for(var i = 0; i < dd.length; i += 4){
-            if(dd[i+3] > 90){ dd[i] = cr; dd[i+1] = cg; dd[i+2] = cb; dd[i+3] = 255; }
+            if(dd[i+3] > 48){ dd[i] = cr; dd[i+1] = cg; dd[i+2] = cb; dd[i+3] = 255; }
             else { dd[i+3] = 0; }
           }
           cx.putImageData(idata, 0, 0);
