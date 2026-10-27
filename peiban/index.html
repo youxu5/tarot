@@ -2018,17 +2018,14 @@
   function playBgm(){
     if(bgmPlayed || !bgm) return;
     bgmPlayed = true;
-    bgm.volume = .3;
-    var pr = bgm.play();
-    if(pr && pr.catch){
-      pr.catch(function(){
-        var retry = function(){
-          document.removeEventListener('pointerdown', retry);
-          bgm.play().catch(function(){});
-        };
-        document.addEventListener('pointerdown', retry);
-      });
-    }
+    var start = function(){
+      try{ bgm.currentTime = 0; }catch(e){}
+      try{ bgm.volume = .3; }catch(e){}
+    };
+    if(bgm.paused){
+      var pr = bgm.play();
+      if(pr && pr.then){ pr.then(start).catch(function(){}); } else { start(); }
+    } else { start(); }   /* 预播已在放：直接归零从头出声 */
   }
 
   /* 音量渐变：关闭音乐时不戛然而止，留 2 秒尾音；开启时 0.9 秒淡入 */
@@ -2168,13 +2165,13 @@
     });
   }
 
-  /* 手势内同步预解锁音频：iOS/安卓只认「用户手势那次同步调用」，事后回调里的 play() 会被静默拦截 */
+  /* 手势内同步预解锁音频：iOS/安卓只认「用户手势那次同步调用」，事后回调里的 play() 会被静默拦截。
+     注意不能用 play→pause（网络慢时 pause 会晚到，把正式起播掐掉），改为静音预播，起播时再拉音量归位。 */
   function primeBgm(){
     if(!bgm) return;
+    try{ bgm.volume = 0; }catch(e){}
     var pr = bgm.play();
-    if(pr && pr.then){
-      pr.then(function(){ bgm.pause(); try{ bgm.currentTime = 0; }catch(e){} }).catch(function(){});
-    }
+    if(pr && pr.catch) pr.catch(function(){});
   }
 
   /* ---------- 开始界面：点击 → 序章（撞击时音乐起播，点击即用户手势，不会被拦截） ---------- */
