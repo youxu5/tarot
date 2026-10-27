@@ -1,0 +1,2198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>风格 · 陪玩自我介绍</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Long+Cang&family=Zhi+Mang+Xing&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#ffffff;          /* 纯白底 */
+    --fg:#111111;
+    --gray:#92949b;        /* 灰蓝 */
+    --pink:#dcbcb8;        /* 柔和粉（框线等点缀） */
+    --mist:#ece3e2;        /* 浅粉灰（烟雾/块面） */
+    --block:#ece3e2;
+    --block-2:#e0d4d3;
+    --red:#8b1a1a;
+    --paper:#ffffff;
+    --px:'DotGothic16', -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    --ui:-apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;background:#ebebeb;}
+  body{
+    font-family:var(--ui);
+    color:var(--fg);
+    display:flex;align-items:center;justify-content:center;
+    overflow:hidden;
+  }
+  .phone{
+    position:relative;
+    width:min(100vw,400px);
+    height:min(100vh,860px);
+    background:var(--bg);
+    overflow:hidden;
+    isolation:isolate;
+  }
+  @media (min-width:520px){
+    .phone{border:1px solid #d0d0ca; box-shadow:0 10px 60px rgba(0,0,0,.12);}
+  }
+
+  /* ---------- 调试网格 ?grid=1 ---------- */
+  .phone.grid::after{
+    content:'';position:absolute;inset:0;pointer-events:none;z-index:99;
+    background-image:
+      linear-gradient(to right, rgba(139,26,26,.30) 0 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(139,26,26,.30) 0 1px, transparent 1px);
+    background-size:33.333% 33.333%;
+  }
+
+  /* ---------- 页面容器 ---------- */
+  .page{
+    position:absolute; inset:0;
+    padding:28px;
+    opacity:0; visibility:hidden;
+    background:var(--bg);
+  }
+  .page.is-active{opacity:1;visibility:visible;}
+  /* 画廊页：全屏 iframe，无内边距 */
+  #page-gallery{ padding:0; cursor:pointer; }
+  #page-gallery iframe{ width:100%; height:100%; border:0; display:block; }
+  /* 画廊上下的半像素题字 */
+  .gal-cap{
+    position:absolute; left:0; right:0; z-index:6; pointer-events:none;
+    font-family:var(--px); text-align:center; color:rgba(255,255,255,.58);
+    letter-spacing:.46em; text-shadow:0 0 10px rgba(0,0,0,.65);
+  }
+  .gal-cap.top{ top:30px; font-size:13px; }
+  .gal-cap.bot{ bottom:26px; font-size:12px; line-height:2.2; letter-spacing:.4em; }
+  /* 右上角：线条黑白玫瑰 = 音乐开关 */
+  .rose-mute{
+    position:absolute; top:13px; right:13px; z-index:40;
+    width:36px; height:36px; cursor:pointer;
+    opacity:0; visibility:hidden;
+    transition:transform .15s ease;
+  }
+  .rose-mute:active{ transform:scale(.9); }
+  .rose-mute svg{ width:100%; height:100%; display:block; }
+  .rose-mute .rm-line{ stroke:#161616; fill:none; stroke-width:1.5; stroke-linecap:round; }
+  .rose-mute .rm-slash{ stroke:#8b1a1a; fill:none; stroke-width:1.8; stroke-linecap:round; opacity:0; transition:opacity .2s; }
+  .rose-mute.off .rm-line{ stroke:#b9b9b2; }
+  .rose-mute.off .rm-slash{ opacity:1; }
+  .rm-tip{
+    position:absolute; top:50%; right:42px; transform:translateY(-50%);
+    font-size:9px; letter-spacing:.28em; color:var(--gray); white-space:nowrap;
+    opacity:0; transition:opacity .25s;
+  }
+  .rose-mute:hover .rm-tip{ opacity:1; }
+
+  /* ---------- 通用文字 ---------- */
+  .back{
+    position:absolute; top:26px; left:7%;
+    font-size:12px; letter-spacing:.22em; color:var(--gray);
+    cursor:pointer; z-index:20; padding:8px 10px 8px 0;
+  }
+  .back::before{content:'← ';}
+  /* 右下角前进：子页顺序浏览 */
+  .fwd{
+    position:absolute; bottom:26px; right:7%;
+    font-size:12px; letter-spacing:.22em; color:var(--gray);
+    cursor:pointer; z-index:20; padding:8px 0 8px 10px;
+  }
+  .fwd::after{content:' →';}
+  .fwd:active{opacity:.55;}
+  .ttl{
+    position:absolute; top:70px; left:7%;
+    font-family:var(--px); font-size:30px; letter-spacing:.16em; line-height:1;
+  }
+  .ttl-en{
+    position:absolute; top:78px; right:7%;
+    font-size:10px; letter-spacing:.34em; color:var(--gray);
+  }
+  .hint{font-size:10px;letter-spacing:.24em;color:var(--gray);}
+  .note{font-size:11px;letter-spacing:.18em;color:var(--gray);}
+
+  /* ---------- 像素风文字框：白色边线，左上/右下角为像素颗粒 ---------- */
+  .pixel-box{
+    --pb-line:#ffffff;
+    position:relative; display:inline-block;
+    background:rgba(255,255,255,.55);
+    border:2px solid var(--pb-line);
+    color:#111;
+    padding:11px 15px;
+    font-family:var(--px); font-size:14px; letter-spacing:.14em; line-height:1.5;
+  }
+  .pixel-box::before{
+    content:''; position:absolute; top:-7px; left:-7px; width:13px; height:13px;
+    background:var(--pb-line);
+    clip-path:polygon(0 0,100% 0,100% 34%,66% 34%,66% 67%,33% 67%,33% 100%,0 100%);
+  }
+  .pixel-box::after{
+    content:''; position:absolute; bottom:-7px; right:-7px; width:13px; height:13px;
+    background:var(--pb-line);
+    clip-path:polygon(0 0,100% 0,100% 34%,66% 34%,66% 67%,33% 67%,33% 100%,0 100%);
+    transform:rotate(180deg);
+  }
+  .pixel-box > span{position:relative; z-index:2;}
+  /* 浅色背景上的弹窗：白线会隐身，换黑线，像素角同步变色 */
+  .vibe-pop .pixel-box{--pb-line:#111111;}
+
+  /* ---------- 占位块 ---------- */
+  .block{
+    background:var(--block);
+    display:flex;align-items:center;justify-content:center;
+    font-size:11px;letter-spacing:.22em;color:var(--gray);
+    text-align:center;
+  }
+  .block.round{border-radius:50%;}
+  .block.red{background:var(--red);color:#fff;}
+  .block.dark{background:#111;color:#fff;}
+  .block.pale{background:var(--block-2);}
+
+
+  /* ---------- 图片占位框 ---------- */
+  .ph{
+    position:absolute;
+    border:1px dashed rgba(17,17,17,.32);
+    background:rgba(17,17,17,.02);
+    display:flex;align-items:center;justify-content:center;
+    overflow:hidden;
+  }
+  .ph::before,.ph::after{
+    content:'';position:absolute;background:rgba(17,17,17,.18);
+  }
+  .ph::before{left:50%;top:50%;width:16px;height:1px;transform:translate(-50%,-50%);}
+  .ph::after{left:50%;top:50%;width:1px;height:16px;transform:translate(-50%,-50%);}
+  .ph > i{
+    position:absolute; bottom:8px; left:0; right:0; text-align:center;
+    font-style:normal; font-size:9px; letter-spacing:.24em; color:#9a9a94;
+  }
+
+  /* ---------- 话术页：照片用细线吊在顶上 ---------- */
+  #page-scripts .ph{ overflow:visible; }   /* 否则吊线被占位框裁掉 */
+  #page-scripts .hang{
+    position:absolute; bottom:100%; left:50%; margin-left:-.5px;
+    width:1px;   /* 拧绳质感：两色相间的细线 */
+    background:repeating-linear-gradient(180deg,#8f8f89 0 3px,#d9d9d3 3px 5px);
+  }
+  #page-scripts .hang::before{
+    content:''; position:absolute; top:-4px; left:50%; transform:translateX(-50%);
+    width:5px; height:5px; border-radius:50%;
+    background:#2b2b2b;   /* 顶部图钉 */
+  }
+
+  /* ---------- 可点热区 ---------- */
+  .hit{cursor:pointer; position:absolute; z-index:6;}
+  .hit:active{opacity:.55;}
+  .hit .tag{
+    position:absolute; left:0; top:100%; margin-top:6px; white-space:nowrap;
+    font-size:9px; letter-spacing:.22em; color:var(--gray);
+  }
+  .hit .tag.r{left:auto; right:0;}
+  .hit .tag.c{left:0; right:0; text-align:center;}
+
+  /* ---------- 跳转烟雾过渡层（从底部升起盖屏，再散去） ---------- */
+  #smokeVeil{
+    position:absolute; inset:0; z-index:55;
+    display:none; pointer-events:none; overflow:hidden;
+  }
+  #smokeVeil .puff{
+    position:absolute; border-radius:50%;
+    filter:blur(16px);
+    background:radial-gradient(circle at 50% 60%, #ffffff 0%, var(--mist) 52%, rgba(236,227,226,0) 74%);
+    animation:veilChurn 3.2s ease-in-out infinite alternate;
+  }
+  #smokeVeil .p1{ left:-18%; bottom:-16%; width:80%; height:46%; }
+  #smokeVeil .p2{ left:30%;  bottom:-24%; width:90%; height:52%; animation-delay:.35s; }
+  #smokeVeil .p3{ left:-8%;  bottom:-30%; width:100%; height:56%; animation-delay:.7s; }
+  #smokeVeil .p4{ left:52%;  bottom:-12%; width:70%; height:42%; animation-delay:.15s; }
+  @keyframes veilChurn{
+    from{ transform:translateX(-3%) scale(1); }
+    to  { transform:translateX(3%)  scale(1.12); }
+  }
+
+  /* ================= 0. 开始界面（游戏 TITLE SCREEN） ================= */
+  #startScr{
+    position:absolute; inset:0; z-index:220; background:#000;
+    display:flex; align-items:center; justify-content:center;
+    padding-top:72px;                /* 整体下移一点 */
+    cursor:pointer;
+  }
+  .ss-title{
+    font-family:var(--px); color:#fff;
+    line-height:1; text-align:center;
+  }
+  .ss-title canvas{
+    display:block; margin:0 auto;      /* 居中 */
+    image-rendering:pixelated;
+    filter:drop-shadow(4px 4px 0 rgba(140,140,140,.5));
+  }
+  /* 扭曲过场：从屏幕中心扩散的波纹环 */
+  .warp-ring{
+    position:absolute; left:50%; top:50%; width:240px; height:240px;
+    margin:-120px 0 0 -120px;
+    border:2px solid rgba(255,255,255,.6); border-radius:50%;
+    opacity:0; pointer-events:none;
+  }
+  .ss-stack{ display:flex; flex-direction:column; align-items:center; }
+  .ss-frame{
+    position:relative; padding:18px 30px 15px;   /* 只比字大一圈 */
+    border:2px solid #ffffff;
+    text-align:center;
+    background:rgba(255,255,255,.03);
+    box-shadow:0 16px 38px rgba(0,0,0,.8);       /* 只留大柔影，去掉会被看成第二个框的硬偏移影 */
+  }
+  /* 四角像素块：正压在边框角上（块中心对准角点），不再有外圈卫星块 */
+  .ss-c{ position:absolute; width:12px; height:12px; background:#fff; }
+  .ss-c.tl{ left:-7px; top:-7px; }
+  .ss-c.tr{ right:-7px; top:-7px; }
+  .ss-c.bl{ left:-7px; bottom:-7px; }
+  .ss-c.br{ right:-7px; bottom:-7px; }
+  .ss-sub{
+    margin-top:30px; font-family:var(--px); font-size:9px;
+    letter-spacing:.52em; margin-right:-.52em; color:rgba(255,255,255,.55);
+    animation:ssBlink 1.6s steps(1) infinite;
+  }
+  @keyframes ssBlink{ 0%,100%{opacity:1;} 50%{opacity:.15;} }
+  #startScr:active .ss-frame{ transform:scale(.985); }
+
+  /* ================= 0. 开场序章 ================= */
+  .intro{
+    position:absolute; inset:0; z-index:60;
+    background:var(--bg); overflow:hidden;
+    visibility:hidden; opacity:0; cursor:pointer;
+  }
+  .intro.on{visibility:visible;opacity:1;}
+  .intro-bg{
+    position:absolute; inset:-12%;
+    background:
+      radial-gradient(58% 42% at 28% 30%, rgba(17,17,17,.09), transparent 72%),
+      radial-gradient(46% 36% at 74% 68%, rgba(17,17,17,.12), transparent 70%),
+      linear-gradient(115deg, transparent 61.8%, rgba(146,148,155,.06) 62%, rgba(146,148,155,.06) 78%, transparent 78.2%),
+      var(--bg);
+  }
+  .intro-grain{
+    position:absolute; inset:0; pointer-events:none; opacity:.55;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.42'/%3E%3C/svg%3E");
+    mix-blend-mode:multiply;
+  }
+  .intro-lid{position:absolute; left:0; width:100%; height:50.5%; background:#050505; transform:scaleY(0); pointer-events:none; z-index:28;}
+  #lidTop{top:0; transform-origin:50% 0;}
+  #lidBot{bottom:0; transform-origin:50% 100%;}
+  .intro-txt{position:absolute; inset:0;}
+  .ln-ripple{
+    position:absolute; width:130px; height:130px; left:0; top:0;
+    border:1px solid rgba(17,17,17,.55); border-radius:50%;
+    opacity:0; pointer-events:none;
+  }
+  .ln{
+    position:absolute; font-family:var(--ui);
+    font-size:17px; letter-spacing:.14em; color:#111; white-space:nowrap;
+  }
+  .ln .char{display:inline-block;}
+  .ln-a{left:11%; top:42%; font-weight:600;}
+  .ln-b{right:11%; top:54%; color:#3a3a36;}
+  .ln-b2{right:11%; top:60.5%; color:#3a3a36;}
+  .intro-skip{
+    position:absolute; bottom:26px; left:0; right:0; text-align:center;
+    font-size:10px; letter-spacing:.3em; color:var(--gray);
+  }
+  /* 序章：直接用原图渲染的「倒在桌沿的高脚杯 + 长酒线 + 地面酒滩」（去掉桌子，透明 PNG） */
+  .intro-glass{
+    position:absolute; left:24%; top:.5%; width:52%; height:40%;
+    pointer-events:none; opacity:0;
+  }
+  .intro-glass img.spill-img{
+    width:100%; height:100%; display:block; object-fit:contain; object-position:50% 0%;
+    clip-path:inset(0 0 100% 0);   /* 初始未显现，随时间线自上而下「流出」 */
+  }
+  /* 序章戒指：第二句话前滚入画面右侧 */
+  .intro-ring{
+    position:absolute; right:10%; top:42.5%; width:23%;
+    opacity:0; pointer-events:none; z-index:5;
+  }
+
+  /* ================= 1. 首页 ================= */
+  .home-snake{ left:-2%; top:-5%; width:44%; height:36%; }
+  .home-snake .snk-img{
+    width:100%; height:100%; object-fit:contain; display:block;
+    transform:rotate(14deg);          /* 头转向右下的耳钉 */
+  }
+  .home-saturn{ left:30%; top:20%; width:76%; height:52%; }   /* 再右移，右缘探出屏边被裁一小截 */
+  .home-saturn .tag.c{ left:62%; right:auto; }                /* 「主页」右移避开红线 */
+  .home-saturn .sat-img{
+    width:100%; height:100%; object-fit:contain; object-position:50% 50%; display:block;
+    animation:levitate 6s ease-in-out infinite;
+  }
+  @keyframes levitate{
+    0%,100%{ transform:translateY(0) rotate(-14deg); }   /* 向左倾斜 */
+    50%    { transform:translateY(-16px) rotate(-8deg); }
+  }
+  /* 首页「欢愉至上」：白底像素框（canvas 小图放大出真像素颗粒） */
+  .home-ring .pixel-box{ --pb-line:var(--pink); background:#ffffff; overflow:visible; }   /* 粉框 */
+  .home-ring .pixel-box::before{ top:-5px; left:-5px; width:9px; height:9px; }
+  .home-ring .pixel-box::after{ bottom:-5px; right:-5px; width:9px; height:9px; }
+  /* 金属质感粒子 + 星芒（土星周围） */
+  .saturn-wrap{position:relative;}
+  .pt{
+    position:absolute;border-radius:50%;
+    background:radial-gradient(circle at 32% 30%, #ffffff 0%, #dcdcdc 22%, #9a9a9a 48%, #2e2e2e 94%);
+    box-shadow:inset -1px -2px 3px rgba(0,0,0,.4), 0 0 5px rgba(255,255,255,.4);
+  }
+  .pt.star{border-radius:0;background:none;box-shadow:none;color:#111;font-size:11px;line-height:1;}
+  .pt.p1{width:9px;height:9px;top:2px;left:24%;animation:float1 5.5s ease-in-out infinite;}
+  .pt.p2{width:4px;height:4px;top:44%;left:-2%;animation:float2 7s ease-in-out infinite;}
+  .pt.p3{width:11px;height:11px;top:78%;left:8%;animation:float3 6.2s ease-in-out infinite;}
+  .pt.p4{width:3px;height:3px;top:20%;right:8%;animation:float2 8s ease-in-out infinite .8s;}
+  .pt.p5{width:7px;height:7px;top:88%;right:16%;animation:float1 6.6s ease-in-out infinite .4s;}
+  .pt.p6{width:5px;height:5px;top:56%;right:-3%;animation:float3 9s ease-in-out infinite;}
+  .pt.star.s1{top:6%;right:22%;animation:float2 7.5s ease-in-out infinite .5s;}
+  .pt.star.s2{bottom:-8%;left:36%;animation:float1 8.5s ease-in-out infinite 1s;}
+  @keyframes float1{0%,100%{transform:translate(0,0);opacity:.55}50%{transform:translate(-8px,-14px);opacity:1}}
+  @keyframes float2{0%,100%{transform:translate(0,0);opacity:.4}50%{transform:translate(10px,-10px);opacity:.95}}
+  @keyframes float3{0%,100%{transform:translate(0,0);opacity:.5}50%{transform:translate(-4px,10px);opacity:1}}
+  .home-ring{ right:4%; bottom:11.5%; width:41%; height:15%; z-index:7; }
+  .home-ring .pixel-box{position:absolute;right:0;bottom:0;z-index:2;}
+  /* 银灰小戒指：缀在文字框左上角，不压文字（框右移后随之调整） */
+  .home-ring .orb-base, .home-ring .orb-front{
+    position:absolute; left:21%; top:23%; width:45%; height:auto;
+    object-fit:contain; display:block; pointer-events:none;
+    transform:rotate(10deg) scaleX(1.15);
+  }
+  .home-ring .orb-base{
+    z-index:1;
+    filter:drop-shadow(0 4px 6px rgba(0,0,0,.22));
+  }
+  .home-ring .orb-front{ z-index:3; clip-path:inset(53% 0 0 0); }
+  .home-ring .tag{ z-index:4; }
+  /* 「欢愉至上」：去外框，文字用 canvas 低分辨率放大 → 像素块风格 */
+  .home-ring .pixel-box{ border:none; background:transparent; padding:2px 3px; }
+  .home-ring .pixel-box canvas{ display:block; image-rendering:pixelated; }
+  /* 红线：从页面顶端贯穿到底（中间上方→中间下方），只经过持烟的手臂；
+     基线在背景层（所有元素之下），下半段单独提层到手臂之上 */
+  .home-redline{
+    position:absolute; left:39%; top:0; width:23%; height:100%;
+    pointer-events:none;
+  }
+  .home-redline img{
+    position:absolute; left:0; top:0; width:100%; height:100%;
+    object-fit:fill; display:block;   /* fill：竖向拉满整屏，曲线全程贯穿 */
+    filter:brightness(.72) saturate(.8);   /* 暗红，不要那么亮 */
+  }
+  .home-redline .rl-base{ z-index:1; }                                   /* 上半段：背景层 */
+  .home-redline .rl-front{ z-index:6; clip-path:inset(50% 0 0 0); }      /* 下半段：压到手臂上层 */
+  /* 上部黑色色块：右上角稍靠下，垫在背景上（红线从其表面经过） */
+  .home-blk{
+    position:absolute; right:0; top:9%; width:45%; height:33%;
+    background:#0a0a0a; z-index:0; pointer-events:none;
+  }
+  /* 内页背景红线：贯穿整屏、印在背景里（除序章外每页都有） */
+  .page-redline{
+    position:absolute; left:39%; top:0; width:23%; height:100%;
+    pointer-events:none; z-index:0; opacity:.3;
+  }
+  /* 风格页：红线避开居中文本与右上 VIBE，走 70-82% 空档（酒杯后面） */
+  #page-vibe .page-redline{ left:70%; width:12%; }
+  .page-redline img{
+    width:100%; height:100%; object-fit:fill; display:block;
+    filter:brightness(.72) saturate(.8);
+  }
+  /* 手持香烟（黑底剪影，原图直接放置）：手臂从左缘伸入，烟头朝右下带火星 */
+  .home-cig{ left:0; bottom:5.5%; width:58%; height:58%; z-index:5; }
+  .home-cig .hand-img{
+    position:absolute; left:0; bottom:0; width:100%; height:100%;
+    object-fit:contain; object-position:left bottom; display:block;
+  }
+  .home-cig .tag{ color:#b9b9b9; }
+  /* 纯烟雾：独立于香烟容器，从燃烧头的屏幕位置竖直升起 */
+  /* 白色烟雾：白芯 + 极浅灰边缘（在白底上靠浅灰晕边显形），柔和上升 */
+  .home-smoke{
+    position:absolute; left:46%; top:40%;
+    width:96px; height:30%;
+    pointer-events:none; z-index:5;
+  }
+  .home-smoke i{
+    position:absolute; bottom:0; left:50%; width:38px; height:38px; margin-left:-19px;
+    border-radius:50%; filter:blur(6px); opacity:0;
+    background:radial-gradient(circle,
+      #ffffff 0%,
+      rgba(255,255,255,.92) 42%,
+      rgba(196,199,206,.42) 68%,
+      rgba(196,199,206,0) 76%);
+    animation:smokeUp 5.4s linear infinite;
+  }
+  .home-smoke i:nth-child(2){ animation-delay:1.8s; margin-left:5px; width:30px; height:30px; }
+  .home-smoke i:nth-child(3){ animation-delay:3.6s; margin-left:-22px; width:34px; height:34px; }
+  @keyframes smokeUp{
+    0%  { transform:translate(0,0) scale(.4); opacity:0; }
+    14% { opacity:.95; }
+    55% { transform:translate(10px,-100px) scale(1.5); opacity:.55; }
+    100%{ transform:translate(26px,-204px) scale(2.3); opacity:0; }
+  }
+  #page-home .home-tip{ position:absolute; bottom:12px; left:7%; }
+
+  /* ================= 2. 主页 ================= */
+  .avatar{
+    position:absolute; top:6.4%; right:6%;
+    width:27%; aspect-ratio:1/1;
+    background:#0d0d0d;
+  }
+  .avatar .ph{
+    position:absolute; inset:0; width:100%; height:100%;
+    object-fit:cover; display:block;
+  }
+  /* 头像外框：黑色雕花边框（透明 PNG，已压成正方形），开口正好贴住方头像 */
+  .avatar .fr{
+    position:absolute; left:50%; top:50%; width:117%;
+    transform:translate(-50%,-50%);
+    pointer-events:none; display:block;
+  }
+  .fields{ position:absolute; top:19%; left:7%; width:40%; }
+  .field{margin-bottom:18px;}
+  .field .k{font-size:10px;letter-spacing:.3em;color:var(--gray);display:block;margin-bottom:9px;}
+  .field .v{
+    display:block;width:100%;white-space:nowrap;
+    border-bottom:1px solid rgba(17,17,17,.35);
+    padding-bottom:7px;font-size:15px;letter-spacing:.1em;color:var(--fg);
+  }
+  .field .v.empty{color:#b4b4ae;}
+  /* 签名：书写体（网络字体加载失败时回退本地楷体/行楷），正常横排 */
+  .field .v.sign{
+    font-family:'Zhi Mang Xing','Long Cang','STXingkai','KaiTi','SimKai',cursive;
+    font-size:19px; letter-spacing:.06em;
+    color:#1c1c1c;
+  }
+  .face-wrap{ position:absolute; top:31%; left:47%; width:54%; height:42%; }
+  .face-wrap .face-img{ width:100%; height:100%; object-fit:contain; display:block; }
+  .earring{ position:absolute; width:52px; height:52px; cursor:pointer; z-index:8; }
+  .earring img{
+    width:100%; height:100%; object-fit:contain; display:block;
+    filter:drop-shadow(0 2px 4px rgba(0,0,0,.28));
+  }
+  .profile-tip{position:absolute;bottom:24px;left:7%;}
+
+  /* ================= 3. 风格页 ================= */
+  /* 戒指：穿在红线右上角 */
+  .vibe-ring{ position:absolute; left:69%; top:11.5%; width:16.5%; z-index:2; pointer-events:none; }
+  .vibe-ring img{ width:100%; display:block; transform:rotate(16deg); }
+  /* 基调文案 */
+  .vibe-line{
+    position:absolute; top:24.5%; left:7%; width:60%;
+    font-size:12px; letter-spacing:.12em; line-height:2.05; color:var(--fg);
+  }
+  .vibe-line .k{
+    display:inline-block; font-size:10px; letter-spacing:.28em;
+    color:var(--gray); vertical-align:1px; margin-right:.4em;
+  }
+  .vibe-line .low{ color:var(--red); font-size:11.5px; letter-spacing:.2em; margin-top:4px; }
+  .vibe-line .vibe-quote{
+    font-size:10px; letter-spacing:.14em; line-height:1.9;
+    color:var(--gray); margin-top:12px;
+  }
+  /* 须知：微信气泡，一条条冒出，新的覆盖旧的，点击可切下一条 */
+  .vc{
+    position:absolute; left:7%; bottom:92px; width:86%; height:170px; z-index:3; cursor:pointer;
+    display:flex; flex-direction:column; justify-content:flex-end; align-items:stretch;
+  }
+  .vc .vc-name{
+    display:block; font-size:10px; letter-spacing:.3em; color:var(--gray); margin:0 0 6px 42px;
+  }
+  .vc-row{ position:relative; display:flex; align-items:flex-end; gap:8px; opacity:0; }
+  .vc-row.on{ animation:vcPop .45s cubic-bezier(.34,1.56,.64,1) forwards; }
+  .vc-row.out{ animation:vcOut .26s ease-in forwards; }
+  @keyframes vcPop{
+    from{ opacity:0; transform:translateY(16px) scale(.9); }
+    to  { opacity:1; transform:none; }
+  }
+  @keyframes vcOut{
+    from{ opacity:1; transform:none; }
+    to  { opacity:0; transform:translateY(-14px); }
+  }
+  .vc-ava{ width:32px; height:32px; border-radius:5px; overflow:hidden; flex:none; }
+  .vc-ava img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .vc-bubble{
+    position:relative; background:#f3f3f1; border-radius:0 10px 10px 10px;
+    padding:10px 13px; font-size:11.5px; letter-spacing:.05em; line-height:1.8;
+    color:var(--fg); max-width:calc(100% - 42px); max-height:150px; overflow:hidden;
+  }
+  .vc-bubble::before{
+    content:''; position:absolute; left:-5px; top:9px;
+    border-top:5px solid transparent; border-bottom:5px solid transparent;
+    border-right:6px solid #f3f3f1;
+  }
+  .vc-bubble b{ font-weight:400; color:var(--red); margin-right:3px; }
+  .vibe-arm{ left:7%; top:50%; width:40.5%; height:30%; }
+  .vibe-arm img{ width:100%; height:100%; object-fit:contain; display:block; }
+  .vibe-glass{ left:65%; top:30%; width:31%; height:42%; }
+  .vibe-glass img{width:100%;height:100%;object-fit:contain;display:block;}
+  .vibe-pop{
+    position:absolute; left:7%; top:7.4%;
+    opacity:0; visibility:hidden; z-index:30;
+    pointer-events:none;
+  }
+  .vibe-pop.show{pointer-events:auto;}
+  .vibe-tip{position:absolute;bottom:26px;left:0;right:0;text-align:center;}
+
+  /* ================= 4. 话术页 ================= */
+  /* 话术页：长页面(px 定位,inner 高 1200)。第二屏=自定义上传框 */
+  .sc-f1{ left:50.5%; top:112px; width:45%;   height:194px; transform:rotate(-1.5deg); z-index:2; }
+  .sc-f2{ left:6%;    top:391px; width:44%;   height:185px; transform:rotate(1.2deg);  z-index:2; }
+  /* 图片排版加密：左上小竖幅 / 右中 / 右下 */
+  .sc-f3{ left:6%;    top:198px; width:41%;   height:189px; transform:rotate(-1.4deg); z-index:2; }
+  .sc-f4{ left:52.5%; top:314px; width:40.5%; height:138px; transform:rotate(1.4deg);  z-index:2; }
+  .sc-f5{ right:5.5%; top:568px; width:40.5%; height:142px; transform:rotate(-1.2deg); z-index:2; }
+  .sc-up1{ left:7%;   top:880px; width:40%;   height:180px; transform:rotate(-1.2deg); z-index:2; }
+  .sc-up2{ left:52%;  top:880px; width:40%;   height:180px; transform:rotate(1.4deg);  z-index:2; }
+
+  /* 原图卡：截图直接上框，点击全屏看细节（话术页+板评页共用） */
+  #page-scripts .ph.pic, #page-reviews .ph.pic{
+    border-style:solid; border-color:rgba(17,17,17,.22);
+    background:#fcfbf8;
+    box-shadow:0 2px 10px rgba(17,17,17,.07);
+    cursor:pointer;
+  }
+  #page-scripts .ph.pic::before,
+  #page-scripts .ph.pic::after,
+  #page-reviews .ph.pic::before,
+  #page-reviews .ph.pic::after{ display:none; }   /* 去掉占位十字 */
+  #page-scripts .ph.pic img, #page-reviews .ph.pic img{
+    position:absolute; inset:0; width:100%; height:100%;
+    object-fit:cover; display:block;
+    box-shadow:0 0 0 3px #fff, 0 0 0 4px rgba(17,17,17,.22);  /* 白边+细灰收边 */
+  }
+  #page-scripts .ph.pic > i{
+    bottom:3px; font-size:7.5px; letter-spacing:.3em; color:#fff;
+    text-shadow:0 0 4px rgba(0,0,0,.9), 0 0 2px rgba(0,0,0,.9);
+    z-index:2; pointer-events:none;
+  }
+  /* 板评图多为浅底：主题字用深灰，黑底信单独用白 */
+  #page-reviews .ph.pic > i{
+    bottom:3px; font-size:7.5px; letter-spacing:.3em; color:#5a564c;
+    text-shadow:0 0 3px rgba(255,255,255,.9);
+    z-index:2; pointer-events:none;
+  }
+  #page-reviews .ph.pic.rv-f1 > i{ color:#fff; text-shadow:0 0 4px rgba(0,0,0,.9); }
+  /* 全屏看图遮罩 */
+  .pic-veil{
+    position:absolute; inset:0; z-index:60; display:none;
+    background:rgba(10,10,10,.93); cursor:pointer;
+  }
+  .pic-veil img{
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    max-width:99%; max-height:94%; object-fit:contain;
+  }
+  .pic-veil .pic-x{
+    position:absolute; top:16px; right:18px;
+    font-size:14px; letter-spacing:.24em; color:#e8e5dd;
+    text-shadow:0 0 6px rgba(0,0,0,.6);
+  }
+  /* 长页面：页内滚动容器（板评/话术），标题与前进按钮固定在视口 */
+  .pg-scroll{
+    position:absolute; inset:0; overflow-y:auto; -webkit-overflow-scrolling:touch;
+    scrollbar-width:none; z-index:2;
+  }
+  .pg-scroll::-webkit-scrollbar{ display:none; }
+  .pg-inner{ position:relative; height:1250px; }   /* 板评默认高 */
+  #page-scripts .pg-inner{ height:1200px; }
+  /* 顶部/底部渐隐遮罩：内容滚过标题区时不生硬 */
+  .pg-fade{
+    position:absolute; left:0; right:0; height:64px; z-index:3; pointer-events:none;
+  }
+  .pg-fade.top{ top:0; background:linear-gradient(#fff 32%, rgba(255,255,255,0)); }
+  .pg-fade.bot{ bottom:0; background:linear-gradient(rgba(255,255,255,0), #fff 40%); }
+  /* 自定义上传占位框：虚线，点击上传；上传后变实线图框 */
+  .ph.up{
+    border:1.5px dashed rgba(17,17,17,.34); background:rgba(255,255,255,.55);
+    cursor:pointer;
+    -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
+  }
+  .ph.up::before, .ph.up::after{ display:none; }
+  .ph.up .up-txt{
+    position:absolute; left:0; right:0; top:50%; transform:translateY(-50%);
+    text-align:center; font-size:10px; letter-spacing:.3em; color:#a09c92;
+    pointer-events:none;
+  }
+  .ph.up.full{ border-style:solid; border-color:rgba(17,17,17,.22); background:#fcfbf8; }
+  .ph.up.full .up-txt{ display:none; }
+  .ph.up.full img{
+    position:absolute; inset:0; width:100%; height:100%;
+    object-fit:cover; display:block; cursor:pointer;
+    box-shadow:0 0 0 3px #fff, 0 0 0 4px rgba(17,17,17,.22);
+  }
+  /* 蛇：首页同款真蛇图，拉大铺成「右上 → 左下」的大对角，隐入背景（压在图片框后面），不挡图 */
+  .sc-snake{ position:absolute; left:-7%; top:1%; width:114%; height:92%; z-index:1; pointer-events:none; }
+  .sc-snake .sc-snk-img{
+    width:100%; height:100%; object-fit:contain; display:block;
+    opacity:.40;                               /* 融入白背景 */
+    transform:rotate(7deg);
+    animation:snkSway 11s ease-in-out infinite;
+  }
+  @keyframes snkSway{
+    0%,100%{ transform:translate(0,0) rotate(7deg); }
+    50%    { transform:translate(-7px,9px) rotate(5.4deg); }
+  }
+  /* 左下：玻璃罩玫瑰入口 —— 贴左下角，只露出图片右边一条（右罩壁+半朵花），图层压在蛇下面 */
+  .sc-half{ left:0; bottom:0; width:18%; height:22%; z-index:0; }
+  .sc-half .half-clip{ position:absolute; inset:0; overflow:hidden; }
+  .sc-half .half-img{
+    position:absolute; top:0; right:0; height:166%; width:auto;
+    display:block;   /* 顶部对齐 → 罩顶和玻璃上半截露出，裁掉底部 */
+  }
+  .sc-half .tag{left:8%; bottom:2px; top:auto;}
+
+  /* ================= 5. 板评页 ================= */
+  /* 板评页：长页面(px 定位,inner 高 1250)。第一屏=四图,第二屏=沈虞信+上传框 */
+  .rv-f1{ left:7%;  top:120px; width:36%; height:323px; transform:rotate(-1.8deg); z-index:2; }
+  .rv-f2{ left:50%; top:120px; width:43%; height:168px; transform:rotate(1.6deg);  z-index:2; }
+  .rv-f3{ left:50%; top:318px; width:43%; height:181px; transform:rotate(-1.4deg); z-index:2; }
+  .rv-f4{ left:7%;  top:486px; width:44%; height:198px; transform:rotate(2deg);    z-index:2; }
+  .rv-f5{ left:7%;  top:840px; width:46%; height:200px; transform:rotate(-1.6deg); z-index:2; }
+  .rv-up1{ left:58%; top:840px;  width:35%; height:180px; transform:rotate(1.6deg);  z-index:2; }
+  .rv-up2{ left:58%; top:1040px; width:35%; height:180px; transform:rotate(-1.4deg); z-index:2; }
+  .rv-bloom{ position:absolute; left:33.75%; top:700px; width:32.5%; height:129px; opacity:.16; z-index:1; pointer-events:none; }
+  .rv-bloom img{width:100%;height:100%;object-fit:contain;display:block;}
+  .rv-eye{ position:absolute; top:700px; width:24%; height:78px; opacity:.5; z-index:1; pointer-events:none; }
+  .rv-eye img{width:100%;height:100%;object-fit:contain;display:block;}
+  .rv-eye-l{ left:7.5%; transform:rotate(-7deg); }
+  .rv-eye-r{ right:7.5%; transform:rotate(7deg); }
+
+  /* ================= 6. 书页 ================= */
+  .book-wrap{position:absolute; left:26%; top:9%; width:68%; height:56%; z-index:6;}
+  .book-zone{
+    position:relative; width:100%; height:100%;
+    perspective:1500px; cursor:pointer;
+  }
+  .book-zone .bl{position:absolute; inset:0;}
+  /* 底层右页 + 右缘/下缘纸厚（立体书脊感） */
+  .book-base{
+    background:#f2f0e9;
+    box-shadow:5px 9px 0 rgba(17,17,17,.05), 9px 16px 30px rgba(0,0,0,.18);
+  }
+  .book-base::after{
+    content:''; position:absolute; right:-7px; top:4px; bottom:-3px; width:7px;
+    background:repeating-linear-gradient(180deg,#f0eee6 0 2px,#c9c6ba 2px 4px);
+    box-shadow:inset -2px 0 3px rgba(0,0,0,.14);
+  }
+  .book-base::before{
+    content:''; position:absolute; left:4px; right:-7px; bottom:-7px; height:7px;
+    background:repeating-linear-gradient(90deg,#f0eee6 0 2px,#c9c6ba 2px 4px);
+    box-shadow:inset 0 -2px 3px rgba(0,0,0,.12);
+  }
+  /* 可翻页张：双面 */
+  .book-page{
+    position:absolute; inset:0; z-index:2;
+    transform-origin:left center; transform-style:preserve-3d;
+  }
+  .pgf,.pgb{
+    position:absolute; inset:0; overflow:hidden;
+    backface-visibility:hidden; -webkit-backface-visibility:hidden;
+    background:#fdfdfb; border:1px solid rgba(17,17,17,.3);
+    box-shadow:0 8px 18px rgba(0,0,0,.10);
+  }
+  .pgb{ transform:rotateY(180deg); }
+  .pgf .pl,.pgb .pl{
+    position:absolute; inset:9% 8%;
+    border:1px dashed rgba(17,17,17,.3); background:rgba(17,17,17,.02) center/cover no-repeat;
+    display:flex; align-items:center; justify-content:center;
+    font-size:9px; letter-spacing:.24em; color:#9a9a94;
+  }
+  .pgf .pl.full,.pgb .pl.full{ border:1px solid rgba(17,17,17,.15); color:transparent; }
+  .book-inside{ background:linear-gradient(105deg,#f4f2ec 0%,#fdfdfb 32%); }
+  .book-inside .bd{position:absolute;left:22px;bottom:20px;font-size:9px;letter-spacing:.3em;color:rgba(17,17,17,.4);}
+  /* 中缝阴影 */
+  .book-spine{ left:0; width:14px; z-index:40; pointer-events:none; background:linear-gradient(90deg,rgba(0,0,0,.20),rgba(0,0,0,0)); }
+  .book-cover{
+    position:absolute;inset:0;
+    background:#ffffff;border:1px solid rgba(17,17,17,.55);
+    overflow:hidden;
+  }
+  .book-cover .book-cv{
+    position:absolute;inset:0;width:100%;height:100%;
+    object-fit:cover;display:block;pointer-events:none;
+  }
+  .book-cover .spine,.book-cover .bt,.book-cover .bd{position:relative;z-index:2;}
+  .book-cover .spine{position:absolute;left:12px;top:16px;bottom:16px;width:1px;background:rgba(17,17,17,.25);}
+  .book-cover .bt{font-family:var(--px);font-size:17px;letter-spacing:.16em;line-height:1.7;}
+  .book-cover .bd{
+    position:absolute;left:0;right:0;bottom:10px;z-index:2;text-align:center;
+    font-size:9px;letter-spacing:.3em;color:#fff;
+    text-shadow:0 1px 6px rgba(0,0,0,.6);
+  }
+  .book-corner{
+    position:absolute;right:0;bottom:0;width:44px;height:44px;
+    background:var(--red);
+    clip-path:polygon(100% 0,100% 100%,0 100%);
+  }
+  .book-inner{
+    position:absolute;inset:0;z-index:1;
+    background:#fbfbf9;color:#111;
+    padding:22px 20px;
+    display:flex;flex-direction:column;gap:14px;
+  }
+  .book-inner .pl{
+    flex:1;border:1px dashed rgba(17,17,17,.3);
+    display:flex;align-items:center;justify-content:center;
+    font-size:9px;letter-spacing:.24em;color:#9a9a94;
+  }
+  .book-inner .pt2{font-family:var(--px);font-size:13px;letter-spacing:.12em;line-height:1.7;}
+  .bk-up{ position:absolute; bottom:12px; left:27%; z-index:8; cursor:pointer; }
+  .bk-up:active{opacity:.5;}
+  /* 手持香烟（黑底剪影，原图直接放置，左下角） */
+  .bk-cig{ left:-2%; bottom:4%; width:54%; height:50%; z-index:4; }
+  .bk-cig .bk-hand{
+    position:absolute; left:0; bottom:0; width:100%; height:100%;
+    object-fit:contain; object-position:left bottom; display:block;
+    /* 手臂从屏幕左缘外伸入：左端渐隐，藏掉被屏幕切断的硬边（图片盒从 -8px 起算，透明段需盖过屏缘） */
+    -webkit-mask-image:linear-gradient(90deg, transparent 0, transparent 9%, #000 34%);
+    mask-image:linear-gradient(90deg, transparent 0, transparent 9%, #000 34%);
+  }
+  .bk-tip{position:absolute;bottom:12px;left:7%;}
+  /* 头牌卡页左上角：细花体 Card */
+  .bk-card-tt{
+    position:absolute; left:7%; top:66px; z-index:5; pointer-events:none;
+    font-family:'Segoe Script','Brush Script MT','Lucida Handwriting',cursive;
+    font-size:22px; font-weight:400; color:rgba(17,17,17,.45); letter-spacing:.04em;
+  }
+</style>
+</head>
+<body>
+<audio id="bgm" src="assets/bgm.m4a" preload="auto"></audio>
+<div class="phone" id="phone">
+
+  <!-- ============ 1. 首页 ============ -->
+  <section class="page is-active" id="page-home">
+    <!-- 上部黑色色块（背景层，与手臂黑块呼应） -->
+    <div class="home-blk" aria-hidden="true"></div>
+
+    <!-- 蛇（真图，左上，觊觎耳钉）→ 话术页 -->
+    <div class="hit home-snake">
+      <img class="snk-img" src="assets/snake.png" alt=""/>
+      <span class="tag c">话术</span>
+    </div>
+
+    <!-- 土星耳钉（真图，漂浮）→ 主页（带烟雾盖屏过渡） -->
+    <div class="hit home-saturn" data-smoke>
+      <div class="saturn-wrap" style="width:100%;height:100%;">
+        <img class="sat-img" src="assets/sat.png" alt=""/>
+        <span class="pt p1"></span><span class="pt p2"></span><span class="pt p3"></span>
+        <span class="pt p4"></span><span class="pt p5"></span><span class="pt p6"></span>
+        <span class="pt star s1">✦</span><span class="pt star s2">✦</span>
+      </div>
+      <span class="tag c">主页</span>
+    </div>
+
+    <!-- 「欢愉至上」白色像素框 → 风格页（右下） -->
+    <div class="hit home-ring">
+      <img class="orb-base" src="assets/ring-lite.png" alt=""/>
+      <span class="pixel-box"><canvas class="px-canvas" data-text="欢愉至上" data-fs="22" data-scale="1" data-slack="1.08" data-font="'Zhi Mang Xing','Long Cang','KaiTi',cursive"></canvas></span>
+      <img class="orb-front" src="assets/ring-lite.png" alt=""/>
+      <span class="tag r">风格</span>
+    </div>
+
+    <!-- 红线：竖穿中轴，上半段在背景层、下半段压在手臂上面 -->
+    <div class="home-redline" aria-hidden="true">
+      <img class="rl-base" src="assets/redline.png" alt=""/>
+      <img class="rl-front" src="assets/redline.png" alt=""/>
+    </div>
+
+    <!-- 手持香烟（黑底剪影原图）→ 书页（左下） -->
+    <div class="hit home-cig">
+      <img class="hand-img" src="assets/hand-cig.png" alt=""/>
+    </div>
+  </section>
+
+  <!-- ============ 2. 主页 ============ -->
+  <section class="page" id="page-profile">
+    <!-- 背景红线：贯穿整屏，印在背景里 -->
+    <div class="page-redline" aria-hidden="true"><img src="assets/redline.png" alt=""/></div>
+
+    <div class="back" data-go="home">主页</div>
+
+    <!-- 头像框：留空，以后再填 -->
+    <div class="avatar" aria-label="头像框">
+      <img class="ph" src="assets/avatar2.jpg" alt=""/>
+      <img class="fr" src="assets/frame-ornate.png" alt=""/>
+    </div>
+
+    <div class="fields">
+      <div class="field"><span class="k">NAME / 名字</span><span class="v">沈虞</span></div>
+      <div class="field"><span class="k">AGE / 年龄</span><span class="v">20</span></div>
+      <div class="field"><span class="k">MBTI</span><span class="v">INFP · 水象双鱼</span></div>
+      <div class="field"><span class="k">TEAM / 常驻团</span><span class="v">雾山影（最高级）</span></div>
+      <div class="field"><span class="k">MODEL / 建模</span><span class="v">2号耳坠鸟 · 1号耳坠</span></div>
+      <div class="field"><span class="k">SIGN / 签名</span><span class="v sign">香饵之下，必有死鱼</span></div>
+    </div>
+
+    <div class="face-wrap">
+      <img class="face-img" src="assets/face-cat.png" alt=""/>
+      <div class="earring" id="earring" style="left:37%;top:34%;">
+        <img src="assets/sat.png" alt="土星耳钉"/>
+      </div>
+    </div>
+
+    <div class="profile-tip hint">点击耳环</div>
+    <div class="fwd" data-go="vibe">下一页</div>
+  </section>
+
+  <!-- ============ 3. 风格页 ============ -->
+  <section class="page" id="page-vibe">
+    <!-- 背景红线：贯穿整屏，印在背景里 -->
+    <div class="page-redline" aria-hidden="true"><img src="assets/redline.png" alt=""/></div>
+
+    <div class="back" data-go="home">主页</div>
+    <div class="ttl">风格</div>
+    <div class="ttl-en">VIBE</div>
+
+    <!-- 戒指：穿在红线右上角 -->
+    <div class="vibe-ring"><img src="assets/ring-lite.png" alt=""/></div>
+
+    <div class="vibe-line">
+      <p><span class="k">主基调</span>恶趣味 / 钓系 / 擦 / 坏心眼 / 安抚 / 温柔 / 日常 / 剖析 / 引导型 / 轻浮</p>
+      <p><span class="k">辅弦乐</span>小狗小猫文学 / 细腻 / 清冷 / 微病感</p>
+      <p class="low">低无虚 · deeptalk 可接</p>
+      <p class="vibe-quote">“——我只在意你的每一滴眼泪是不是为我而流。”</p>
+    </div>
+
+    <div class="hit vibe-arm vibe-hit"><img src="assets/arm.png" alt="手臂"/></div>
+    <div class="hit vibe-glass vibe-hit"><img src="assets/tower.png" alt="香槟塔"/></div>
+
+    <div class="vibe-pop" id="vibePop">
+      <span class="pixel-box"><span>我们可以谈论<br/>眼睛的美好么</span></span>
+    </div>
+
+    <div class="vibe-tip hint">点击画面</div>
+
+    <!-- 须知：微信气泡轮播 -->
+    <div class="vc" id="vibeChat">
+      <span class="vc-name">沈虞</span>
+      <div class="vc-row" id="vcRow">
+        <div class="vc-ava"><img src="assets/avatar2.jpg" alt=""/></div>
+        <div class="vc-bubble" id="vcBubble"></div>
+      </div>
+    </div>
+
+    <div class="fwd" data-go="scripts">下一页</div>
+  </section>
+
+  <!-- ============ 4. 话术页 ============ -->
+  <section class="page" id="page-scripts">
+    <!-- 背景红线：贯穿整屏，印在背景里 -->
+    <div class="page-redline" aria-hidden="true"><img src="assets/redline.png" alt=""/></div>
+
+    <div class="back" data-go="home">主页</div>
+    <div class="ttl">话术</div>
+    <div class="ttl-en">SCRIPT</div>
+
+    <div class="pg-scroll">
+      <div class="pg-inner">
+        <div class="ph pic sc-f1"><b class="hang" style="height:116px"></b><img src="assets/chat1.jpg" alt="话术一"/></div>
+        <div class="ph pic sc-f2"><b class="hang" style="height:398px"></b><img src="assets/chat2.jpg" alt="话术二"/></div>
+        <div class="ph pic sc-f3"><b class="hang" style="height:209px"></b><img src="assets/chat3.jpg" alt="话术三"/></div>
+        <div class="ph pic sc-f5"><b class="hang" style="height:566px"></b><img src="assets/chat4.jpg" alt="话术四"/></div>
+
+        <!-- 第二屏：老板自定义上传 -->
+        <div class="ph up sc-up1" data-ck="sc" data-ix="0"><span class="up-txt">＋ 上传图片</span></div>
+        <div class="ph up sc-up2" data-ck="sc" data-ix="1"><span class="up-txt">＋ 上传图片</span></div>
+      </div>
+    </div>
+    <div class="pg-fade top"></div>
+    <div class="pg-fade bot"></div>
+
+    <!-- 蛇：首页同款真蛇图，铺成大对角隐入背景（尾右上、头左下），压在图片框后面 -->
+    <div class="sc-snake">
+      <img class="sc-snk-img" src="assets/snake.png" alt=""/>
+    </div>
+
+    <div class="hit sc-half" id="halfFace" data-go="reviews">
+      <div class="half-clip"><img class="half-img" src="assets/rose-dome.png" alt=""/></div>
+      <span class="tag c">板评 →</span>
+    </div>
+
+    <div class="fwd" data-go="reviews">下一页</div>
+  </section>
+
+  <!-- ============ 5. 板评页 ============ -->
+  <section class="page" id="page-reviews">
+    <!-- 背景红线：固定不随滚动 -->
+    <div class="page-redline" aria-hidden="true"><img src="assets/redline.png" alt=""/></div>
+
+    <div class="back" data-go="home">主页</div>
+    <div class="ttl">板评</div>
+    <div class="ttl-en">BOARD</div>
+
+    <div class="pg-scroll">
+      <div class="pg-inner">
+        <div class="ph pic rv-f1"><b class="hang" style="height:96px"></b><img src="assets/review2.jpg" alt="信·利"/><i>信 · 利</i></div>
+        <div class="ph pic rv-f2"><b class="hang" style="height:238px"></b><img src="assets/review1.jpg" alt="一封湿漉漉的信"/><i>一封湿漉漉的信</i></div>
+        <div class="ph pic rv-f3"><b class="hang" style="height:429px"></b><img src="assets/review3.png" alt="手写板评"/><i>手写板评</i></div>
+        <div class="ph pic rv-f4"><b class="hang" style="height:327px"></b><img src="assets/review4.png" alt="一言板评"/><i>一言 · 沈虞</i></div>
+
+        <!-- 玫瑰+蛇瞳（真图）：入场动画后虚化沉底（第一屏底部） -->
+        <div class="rv-bloom"><img src="assets/glass-flower2.png" alt=""/></div>
+        <div class="rv-eye rv-eye-l"><img src="assets/eye-l-real.png" alt="蛇瞳"/></div>
+        <div class="rv-eye rv-eye-r"><img src="assets/eye-r-real.png" alt="蛇瞳"/></div>
+
+        <!-- 第二屏：to沈虞信 + 老板自定义上传 -->
+        <div class="ph pic rv-f5"><b class="hang" style="height:760px"></b><img src="assets/review5.png" alt="to沈虞"/><i>to 沈虞</i></div>
+        <div class="ph up rv-up1" data-ck="rv" data-ix="0"><span class="up-txt">＋ 上传图片</span></div>
+        <div class="ph up rv-up2" data-ck="rv" data-ix="1"><span class="up-txt">＋ 上传图片</span></div>
+      </div>
+    </div>
+    <div class="pg-fade top"></div>
+    <div class="pg-fade bot"></div>
+
+    <div class="fwd" data-go="book">下一页</div>
+  </section>
+
+  <!-- ============ 6. 书页 ============ -->
+  <section class="page" id="page-book">
+    <!-- 背景红线：贯穿整屏，印在背景里 -->
+    <div class="page-redline" aria-hidden="true"><img src="assets/redline.png" alt=""/></div>
+
+    <div class="back" data-go="home">主页</div>
+    <div class="bk-card-tt">Card</div>
+
+    <div class="hit bk-cig">
+      <img class="bk-hand" src="assets/hand-cig-bk.png" alt=""/>
+    </div>
+
+    <div class="book-wrap">
+      <div class="book-zone" id="bookZone">
+        <div class="bl book-base"></div>
+        <div class="book-inner">
+          <div class="pt2">想说的话<br/>写在图片上面</div>
+          <div class="pl">图片</div>
+        </div>
+        <div class="book-page" id="bp1">
+          <div class="pgf"><div class="pl full" data-slot style="background-image:url('assets/card-p1.jpg')">图片 01</div></div>
+          <div class="pgb"><div class="pl full" data-slot style="background-image:url('assets/album-april.jpg')">图片 02</div></div>
+        </div>
+        <div class="book-page" id="bp2">
+          <div class="pgf"><div class="pl" data-slot>图片 03</div></div>
+          <div class="pgb"><div class="pl" data-slot>图片 04</div></div>
+        </div>
+        <div class="book-page" id="bp3">
+          <div class="pgf"><div class="pl" data-slot>图片 05</div></div>
+          <div class="pgb"><div class="pl" data-slot>图片 06</div></div>
+        </div>
+        <div class="book-page" id="bookFace">
+          <div class="pgf">
+            <div class="book-cover">
+              <img class="book-cv" src="assets/card-cover.jpg" alt="虚恋头牌·沈虞"/>
+              <div class="bd">TAP THE BOOK</div>
+              <span class="book-corner"></span>
+            </div>
+          </div>
+          <div class="pgb book-inside">
+            <div class="bd">MOMENTS</div>
+            <span class="book-corner" style="right:auto;left:0;transform:scaleX(-1);opacity:.85"></span>
+          </div>
+        </div>
+        <span class="bl book-spine"></span>
+      </div>
+    </div>
+
+    <div class="bk-up hint" id="bkUp">上传图片</div>
+    <input type="file" id="bkFile" accept="image/*" multiple style="display:none"/>
+
+    <div class="fwd" data-go="home">下一页</div>
+  </section>
+
+  <!-- 右上角：线条黑白玫瑰 = 音乐开关（序章结束后出现，点一下淡出收尾音，再点淡入恢复） -->
+  <div class="rose-mute" id="roseMute">
+    <svg viewBox="0 0 48 48" aria-label="音乐开关">
+      <g class="rm-line">
+        <!-- 玫芯螺旋 -->
+        <path d="M24.6 23.2c1.6.4 2.6 1.7 2.4 3.3-.2 1.9-1.9 3.1-4 2.9-2.4-.2-4-2.1-3.8-4.6.3-2.9 2.9-4.8 5.9-4.4 3.4.4 5.8 3.3 5.4 6.8-.5 4.2-4.4 7-8.7 6.4-4.9-.6-8.3-4.9-7.6-9.9.8-5.6 6-9.3 11.7-8.5 6.3.9 10.6 6.6 9.6 12.9"/>
+        <!-- 外层花瓣两笔 -->
+        <path d="M14.9 29.5c-2.3-4.4-1-10 3.2-12.7 3.6-2.3 8.3-1.9 11.4.8"/>
+        <path d="M34.3 31.6c2.5-2.9 3-7.1 1.2-10.6"/>
+        <!-- 花萼与叶 -->
+        <path d="M22.4 36.6c-.4 2.7-2.1 4.5-5 5.4"/>
+        <path d="M17.4 42c-1.9.2-3.4-.4-4.5-1.8"/>
+        <path d="M26.8 36.6c.4 2.7 2.1 4.5 5 5.4"/>
+        <path d="M31.8 42c1.9.2 3.4-.4 4.5-1.8"/>
+      </g>
+      <path class="rm-slash" d="M11 37L37 11"/>
+    </svg>
+    <span class="rm-tip">MUSIC</span>
+  </div>
+
+  <!-- 唤醒画廊：主页展示之后直接进入 -->
+  <section class="page" id="page-gallery">
+    <iframe id="galleryFrame" title="唤醒画廊"></iframe>
+    <div class="gal-cap top">虚妄的时间里</div>
+    <div class="gal-cap bot">你是真实<br/>是为数不多的真心</div>
+  </section>
+
+  <!-- ============ 跳转烟雾过渡层 ============ -->
+  <div class="pic-veil" id="picVeil">
+    <img id="picVeilImg" src="" alt=""/>
+    <span class="pic-x">点击关闭 ×</span>
+  </div>
+  <input type="file" id="upInput" accept="image/*" style="display:none"/>
+  <div id="smokeVeil">
+    <i class="puff p1"></i><i class="puff p2"></i><i class="puff p3"></i><i class="puff p4"></i>
+  </div>
+
+  <!-- ============ -1. 开始界面：点击后进入序章并起播音乐 ============ -->
+  <div id="startScr">
+    <i class="warp-ring"></i><i class="warp-ring r2"></i>
+    <div class="ss-stack">
+      <div class="ss-frame">
+        <i class="ss-c tl"></i><i class="ss-c tr"></i><i class="ss-c bl"></i><i class="ss-c br"></i>
+        <div class="ss-title"><canvas class="px-canvas" data-text="开始交集" data-fs="13" data-scale="1.8" data-color="#ffffff" data-slack="1.04" data-snap="1"></canvas></div>
+      </div>
+      <div class="ss-sub">TAP TO START</div>
+    </div>
+  </div>
+
+  <!-- ============ 0. 开场序章（无人物，只有文字与黑白背景） ============ -->
+  <div class="intro" id="intro">
+    <div class="intro-bg"></div>
+    <div class="intro-grain"></div>
+
+    <div class="intro-lid" id="lidTop"></div>
+    <div class="intro-lid" id="lidBot"></div>
+
+    <div class="intro-txt" id="introTxt">
+      <i class="ln-ripple" id="lnRipple"></i>
+      <p class="ln ln-a" id="lnA">你怎么撞我？</p>
+      <p class="ln ln-b" id="lnB">不好意思小姐。</p>
+      <p class="ln ln-b2 ln-b" id="lnC">今夜玩的愉快。</p>
+    </div>
+
+    <!-- 序章戒指：第二句话说出前，滚落到桌面 -->
+    <img class="intro-ring" id="introRing" src="assets/ring-lite.png" alt=""/>
+
+    <!-- 序章酒杯：使用用户原图（assets/spill.png）渲染，不自绘 -->
+    <div class="intro-glass" id="introGlass" aria-hidden="true">
+      <img class="spill-img" src="assets/spill.png" alt=""/>
+    </div>
+
+    <div class="intro-skip">轻触任意处跳过</div>
+  </div>
+
+</div>
+
+<script src="assets/gsap.min.js"></script>
+<script>if(!window.gsap){document.write('<scr'+'ipt src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"><\/scr'+'ipt>');}</script>
+<script>
+(function(){
+  var G = window.gsap || null;
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var current = 'home';
+  var pages = {};
+  ['home','profile','vibe','scripts','reviews','book','gallery'].forEach(function(id){
+    pages[id] = document.getElementById('page-' + id);
+  });
+
+  if(/[?&]grid=1/.test(location.search)){
+    document.getElementById('phone').classList.add('grid');
+  }
+
+  /* ---------- 页面切换 ---------- */
+  function kidsOf(el){
+    return el.querySelectorAll(':scope > *:not(.vibe-pop):not(.book-wrap)');
+  }
+  function enterPage(id, keepAlpha){
+    var el = pages[id];
+    var kids = kidsOf(el);
+    if(id === 'gallery'){
+      /* 每次进入都重新加载画廊（入场动画重播） */
+      var f = document.getElementById('galleryFrame');
+      if(f.getAttribute('src') !== 'gallery.html') f.setAttribute('src', 'gallery.html');
+    }
+    /* 长页面进入时滚回顶部 */
+    var sc = el.querySelector('.pg-scroll');
+    if(sc) sc.scrollTop = 0;
+    if(id === 'vibe') chatStart(); else chatStop();
+    if(G && !reduce){
+      if(!keepAlpha) G.set(el, {autoAlpha:1});
+      /* 板评页入场由 playReviewsIntro 全权接管，这里不做子元素补间（会覆盖 intro 状态）；
+         话术页同理，由 playScriptsIntro 接管（吊线落下） */
+      if(id !== 'reviews' && id !== 'scripts'){
+        G.fromTo(kids, {autoAlpha:0, y:18}, {autoAlpha:1, y:0, duration:.5, stagger:.04, ease:'power2.out', delay:.1});
+      }
+      if(id === 'vibe') G.set(pop, {autoAlpha:0});
+    } else {
+      el.style.visibility='visible'; el.style.opacity='1';
+      if(id !== 'reviews' && id !== 'scripts') Array.prototype.forEach.call(kids, function(k){
+        if(k.animate) k.animate([{opacity:0,transform:'translateY(18px)'},{opacity:1,transform:'none'}],{duration:480,easing:'cubic-bezier(.2,.7,.3,1)'});
+      });
+    }
+  }
+
+  var switching = false;
+  window.__go = function(id){ switching = false; go(id); };  /* 调试句柄 */
+  /* 板评页入场 v2：背景清空只剩红线 → 玫瑰出现在屏幕正中 → 真蛇眼浮现并眨一下 →
+     板评图从下方升上来 → 花和眼睛虚化沉入背景位 → 界面文字浮现 */
+  function playReviewsIntro(){
+    var page   = pages.reviews;
+    var bloom  = page.querySelector('.rv-bloom');
+    var eyes   = Array.prototype.slice.call(page.querySelectorAll('.rv-eye'));
+    var cards  = Array.prototype.slice.call(page.querySelectorAll('.pg-inner .ph'));
+    var ui     = Array.prototype.slice.call(page.querySelectorAll(':scope > .back, :scope > .ttl, :scope > .ttl-en, :scope > .fwd'));
+    var scroll = page.querySelector('.pg-scroll');
+    var rline  = page.querySelector('.page-redline');
+    if(!bloom || !eyes.length) return;
+    if(G && !reduce){
+      G.killTweensOf([bloom].concat(eyes, cards, ui, [scroll], [rline]));
+      /* 开场清空：只留红线（红线提亮，空屏时它就是唯一的主角） */
+      G.set(scroll, {autoAlpha:1, y:0});
+      G.set(rline,  {opacity:.85});
+      G.set(ui,    {autoAlpha:0, y:0});
+      G.set(cards, {autoAlpha:0, y:0});
+      /* 花居中（最终位 top:700 → 屏幕中央需上移 334px）；蛇眼并排悬在花下方 */
+      G.set(bloom, {y:-334, scale:.9, transformOrigin:'50% 50%', autoAlpha:0, filter:'none'});
+      G.set(eyes[0], {x:82, y:-186, transformOrigin:'50% 50%', autoAlpha:0, filter:'none'});
+      G.set(eyes[1], {x:-82, y:-186, transformOrigin:'50% 50%', autoAlpha:0, filter:'none'});
+      var rtl = G.timeline();
+      /* 1. 玫瑰浮现于正中 */
+      rtl.to(bloom, {autoAlpha:1, scale:1, duration:.9, ease:'power2.out'})
+      /* 2. 蛇眼出现，眨一下 */
+         .to(eyes, {autoAlpha:1, duration:.45, stagger:.1, ease:'power1.out'}, '+=0.2')
+         .to(eyes, {scaleY:.06, duration:.09, ease:'power2.in'})
+         .to(eyes, {scaleY:1, duration:.18, ease:'power2.out'})
+         .to({}, {duration:.35})                                  /* 停一拍 */
+      /* 3. 板评图从底部升上来 */
+         .fromTo(cards, {y:70}, {y:0, autoAlpha:1, duration:.9, stagger:.08, ease:'power2.out'}, '+=0.05')
+      /* 4. 花与眼睛落回背景位并虚化，红线也退回背景浓度 */
+         .to(bloom, {y:0, autoAlpha:.16, filter:'blur(3px)', duration:1.15, ease:'power1.inOut'}, '+=0.25')
+         .to(eyes,  {x:0, y:0, autoAlpha:.5, filter:'blur(3px)', duration:1.15, ease:'power1.inOut'}, '<')
+         .to(rline, {opacity:.3, duration:1.15, ease:'power1.inOut'}, '<')
+      /* 5. 界面文字浮现 */
+         .to(ui, {autoAlpha:1, duration:.55, stagger:.06, ease:'power1.out'}, '-=0.55');
+    } else {
+      G.set(scroll, {autoAlpha:1, y:0});
+      G.set(ui, {autoAlpha:1});
+      G.set(cards, {autoAlpha:1, y:0});
+      G.set(bloom, {y:0, autoAlpha:.16, filter:'blur(3px)'});
+      eyes.forEach(function(e){ G.set(e, {x:0, y:0, autoAlpha:.5, filter:'blur(3px)'}); });
+    }
+  }
+
+  /* 话术页入场：先出背景（红线/蛇/标题/按钮），四张图挂在线上被一个个吊下来，落到原位 */
+  function playScriptsIntro(){
+    var page   = pages.scripts;
+    var scroll = page.querySelector('.pg-scroll');
+    var cards  = Array.prototype.slice.call(page.querySelectorAll('.pg-inner .ph.pic'));
+    var bg     = Array.prototype.slice.call(page.querySelectorAll('.page-redline, .sc-snake'));
+    var ui     = Array.prototype.slice.call(page.querySelectorAll(':scope > .back, :scope > .ttl, :scope > .ttl-en, :scope > .fwd'));
+    var half   = page.querySelector('.sc-half');
+    var ups    = Array.prototype.slice.call(page.querySelectorAll('.ph.up'));
+    if(!cards.length) return;
+    if(G && !reduce){
+      G.killTweensOf([scroll, half].concat(cards, bg, ui, ups));
+      /* 1. 背景先就位 */
+      G.set(scroll, {autoAlpha:1, y:0});
+      G.set(bg,  {autoAlpha:1});
+      G.set(ui,  {autoAlpha:1});
+      G.set(half, {autoAlpha:1});
+      G.set(ups, {autoAlpha:1, y:0});
+      /* 2. 图片挂在线上悬到画面上方（完全藏进裁切区外），随后被线一个个放下来 */
+      cards.forEach(function(c){
+        var top = parseFloat(getComputedStyle(c).top) || 0;
+        G.set(c, {y:-(top + c.offsetHeight + 40), autoAlpha:0});
+      });
+      var stl = G.timeline();
+      cards.forEach(function(c, i){
+        stl.to(c, {autoAlpha:1, duration:.15, ease:'none'}, i * .55)
+           .to(c, {y:0, duration:.9, ease:'bounce.out'}, i * .55 + .02);
+      });
+    } else {
+      G.set(scroll, {autoAlpha:1, y:0});
+    }
+  }
+
+  function go(id){
+    if(!pages[id] || id === current || switching) return;
+    switching = true;
+    var from = pages[current], to = pages[id];
+    var prev = current;
+    current = id;
+    if(prev === 'gallery' && id !== 'gallery'){
+      /* 离开画廊：卸载 iframe 释放 WebGL 资源 */
+      document.getElementById('galleryFrame').setAttribute('src', 'about:blank');
+    }
+    var after = function(){
+      switching = false;
+      if(id === 'reviews') playReviewsIntro();
+      if(id === 'scripts') playScriptsIntro();
+    };
+    if(G && !reduce){
+      var tl = G.timeline({onComplete:after});
+      tl.to(kidsOf(from), {autoAlpha:0, y:-16, duration:.28, stagger:.02, ease:'power1.in'})
+        .set(from, {autoAlpha:0})
+        .set(to, {autoAlpha:1})
+        .add(function(){ enterPage(id); });
+    } else {
+      from.style.opacity='0'; from.style.visibility='hidden';
+      to.style.opacity='1'; to.style.visibility='visible';
+      enterPage(id);
+      after();
+    }
+  }
+
+  /* ---------- 烟雾盖屏跳转（带 data-smoke 的入口） ---------- */
+  var veil = document.getElementById('smokeVeil');
+  function smokeGo(id){
+    if(switching || !pages[id]) return;
+    switching = true;
+    if(G && !reduce){
+      G.set(veil, {display:'block', y:'104%'});
+      G.to(veil, {y:'0%', duration:.7, ease:'power2.in', onComplete:function(){
+        G.set(pages[current], {autoAlpha:0});       /* 盖住的瞬间瞬时切页 */
+        current = id;
+        G.set(pages[id], {autoAlpha:1});
+        enterPage(id);
+        if(id === 'reviews') playReviewsIntro();
+        if(id === 'scripts') playScriptsIntro();
+        switching = false;
+        G.to(veil, {y:'-112%', duration:.9, ease:'power2.out', delay:.25,
+          onComplete:function(){ G.set(veil, {display:'none'}); }});
+      }});
+    } else {
+      switching = false;
+      go(id);
+    }
+  }
+
+  document.querySelectorAll('[data-go]').forEach(function(el){
+    el.addEventListener('click', function(){
+      var t = el.getAttribute('data-go');
+      if(el.hasAttribute('data-smoke')) smokeGo(t); else go(t);
+    });
+  });
+
+  /* ---------- 主页 = 纯展示页：点击任意处进入唤醒画廊 ---------- */
+  pages.home.addEventListener('click', function(e){
+    if(e.target.closest && e.target.closest('#earring')) return;   /* 耳钉彩蛋优先 */
+    go('gallery');
+  });
+  /* 画廊内「返回」：postMessage 切回展示页；点卡片跳对应子页 */
+  window.addEventListener('message', function(e){
+    if(e.data === 'gallery:back') go('home');
+    else if(typeof e.data === 'string' && e.data.indexOf('gallery:go:') === 0){
+      var id = e.data.slice('gallery:go:'.length);
+      if(pages[id]) go(id);
+    }
+  });
+
+  /* ---------- 耳钉：发光 + 掉落（掉下去就留在下面，不再上来） ---------- */
+  var ear = document.getElementById('earring');
+  var earBusy = false;
+  ear.addEventListener('click', function(){
+    if(earBusy) return;
+    earBusy = true;                                 /* 掉落后不再复位，也不可再点 */
+    if(G && !reduce){
+      var tl = G.timeline();
+      tl.to(ear, {scale:1.35, duration:.25, ease:'back.out(3)'})
+        .to(ear, {y:300, x:-40, rotation:640, duration:1.1, ease:'bounce.out'})
+        .to(ear, {autoAlpha:0, duration:.35}, '-=.2');
+    } else {
+      ear.animate([{transform:'none'},{transform:'translate(-40px,300px) rotate(640deg)',opacity:0}],
+                  {duration:1200, easing:'cubic-bezier(.3,.9,.4,1)', fill:'forwards'});
+    }
+  });
+
+  /* ---------- 风格页弹窗：标题消失 + 像素框出现在标题原位 ---------- */
+  var pop = document.getElementById('vibePop');
+  var vibeTtl = document.querySelector('#page-vibe .ttl');
+  var popOpen = false;
+  function togglePop(){
+    popOpen = !popOpen;
+    var inner = pop.querySelector('.pixel-box');
+    if(G && !reduce){
+      if(popOpen){
+        pop.classList.add('show');
+        G.set(pop, {visibility:'visible'});
+        G.to(vibeTtl, {autoAlpha:0, duration:.22, ease:'power1.in'});
+        G.fromTo(inner, {autoAlpha:0, scale:.72}, {autoAlpha:1, scale:1, duration:.5, ease:'back.out(1.6)', delay:.12});
+      } else {
+        G.to(inner, {autoAlpha:0, scale:.85, duration:.26, ease:'power2.in', onComplete:function(){
+          pop.classList.remove('show'); G.set(pop, {visibility:'hidden'});
+        }});
+        G.to(vibeTtl, {autoAlpha:1, duration:.3, delay:.18});
+      }
+    } else {
+      pop.classList.toggle('show');
+      pop.style.visibility = popOpen ? 'visible' : 'hidden';
+      pop.style.opacity = popOpen ? '1' : '0';
+      vibeTtl.style.opacity = popOpen ? '0' : '1';
+    }
+  }
+  document.querySelectorAll('.vibe-hit').forEach(function(el){
+    el.addEventListener('click', togglePop);
+  });
+  pop.addEventListener('click', function(){ if(popOpen) togglePop(); });
+
+  /* ---------- 半朵花（同时是进板评页入口） ---------- */
+  var half = document.getElementById('halfFace');
+  var glass = half.querySelector('.sc-glass');
+  half.addEventListener('click', function(){
+    if(G && !reduce){
+      G.fromTo(glass, {opacity:.25}, {opacity:1, duration:.18, yoyo:true, repeat:1, ease:'power1.inOut'});
+      G.fromTo(half, {scale:1}, {scale:1.06, duration:.18, yoyo:true, repeat:1, ease:'power1.inOut'});
+    }
+  });
+
+  /* ---------- 玻璃花 / 蛇瞳：闪现后停在某透明度（眼睛更亮，玻璃花隐回背景） ---------- */
+  function flicker(el, delay, settle){
+    if(!G || reduce || !el) return;
+    settle = settle == null ? .16 : settle;
+    G.fromTo(el, {opacity:0}, {opacity:.9, duration:.5, delay:delay, ease:'power1.out',
+      onComplete:function(){ G.to(el, {opacity:settle, duration:1.2, ease:'power2.inOut'}); }});
+  }
+
+  /* ---------- 风格页须知：微信气泡一条条冒出，新的覆盖旧的 ---------- */
+  var chatRules = [
+    '迟到超过五分钟时长算送，迟到超过十分钟默认送单。我不想我们的约会只有我在期待。',
+    '单子一旦开始，不接受任何非我原因的退单理由，要么送，要么存。',
+    '下单默认已读所有须知，踩暗雷不负责。',
+    '单内所有话术都是因为你而存在，不对不同的人说一样的话。见到我的每一秒都是你的个人收藏，讨厌千篇一律的不真诚。',
+    '不接非三无老板的恋单，宝宝不要让我当小三 TuT。',
+    '本人 le，拒男板，只会想讨女人欢心。',
+    '话多打字快，因为见到老婆就忍不住多主动一些；习惯等你说完再说话，喜欢慢慢来可以提前说。1h/10min · 0.5h/5min 内接受退单换人，但是好可惜宝宝我们要错过了。',
+    '一切风格随机掉落，也许你会开出隐藏款。下单前喜雷提前说，我不想无意识让你不开心 &gt;&lt;。',
+    '我们是爱人不是敌人，故意刁难只好被我当成撒娇了。我很玻璃心，不要欺负我，我不是坏人。',
+    '单内记忆当然可以保存记录，但未经允许不可以外传哦，毕竟那是我想私藏的我们的独家记忆。',
+    '就算你衣冠整整站在我面前，我也会对你动手动脚，放过你的事情我做不到。'
+  ];
+  var vcRow = document.getElementById('vcRow');
+  var vcBubble = document.getElementById('vcBubble');
+  var vcIdx = 0, vcTimer = null, vcBusy = false;
+  function vcShow(i){
+    vcBusy = false;
+    vcBubble.innerHTML = '<b>' + (i + 1) + '.</b>' + chatRules[i];
+    vcRow.classList.remove('on', 'out');
+    void vcRow.offsetWidth;              /* 重置动画 */
+    vcRow.classList.add('on');
+  }
+  function vcNext(){
+    if(vcBusy) return;
+    vcBusy = true;
+    vcIdx = (vcIdx + 1) % chatRules.length;
+    vcRow.classList.remove('on');
+    vcRow.classList.add('out');
+    setTimeout(function(){ vcShow(vcIdx); }, 270);
+  }
+  function chatStart(){
+    vcShow(vcIdx);
+    if(vcTimer) clearInterval(vcTimer);
+    vcTimer = setInterval(vcNext, 7000);
+  }
+  function chatStop(){
+    if(vcTimer){ clearInterval(vcTimer); vcTimer = null; }
+  }
+  window.__chatStart = chatStart;   /* 调试截图用 */
+
+  /* ---------- 云端同步：Supabase REST（同翠玉录通道，表 cuiyu_slots，page='peiban'） ----------
+   * 老师上传的图片压缩后以 data URL 存库；任何访客打开页面都能读到同一份。
+   * 网络不通时全部静默降级为纯本机行为，不白屏不报错。 */
+  var Cloud = (function(){
+    var CFG = {
+      url: 'https://udbtfhwmtlylkcolxmhf.supabase.co',
+      anonKey: 'sb_publishable_F0nSwoHFgsPRMh4n8HCBVg__M8lgts1',
+      table: 'cuiyu_slots',
+      page: 'peiban'
+    };
+    var MAXLEN = 900000;   /* data URL 字符上限，超了继续压 */
+    var STEPS = [[1000, .8], [800, .75], [640, .7], [480, .65]];
+    var base = CFG.url.replace(/\/+$/, '') + '/rest/v1/' + CFG.table;
+
+    function head(extra){
+      return Object.assign({
+        apikey: CFG.anonKey,
+        Authorization: 'Bearer ' + CFG.anonKey,
+        Accept: 'application/json'
+      }, extra || {});
+    }
+    /* 读操作把 apikey 放 URL 参数（简单请求，不发 OPTIONS 预检，微信里更稳） */
+    function rows(q){
+      return fetch(base + '?select=id,ix,url,rev,created_at' + q +
+        '&page=eq.' + CFG.page + '&apikey=' + encodeURIComponent(CFG.anonKey), { cache: 'no-store' })
+        .then(function(r){ return r.ok ? r.json() : []; })
+        .catch(function(){ return []; });
+    }
+    function withTimeout(p, ms){
+      return Promise.race([p, new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('timeout')); }, ms); })]);
+    }
+
+    /* 图片文件 → 压缩 data URL */
+    function compress(file, step){
+      var i = step || 0, spec = STEPS[Math.min(i, STEPS.length - 1)];
+      return new Promise(function(res, rej){
+        var objUrl = URL.createObjectURL(file);
+        var im = new Image();
+        im.onload = function(){
+          var sc = Math.min(1, spec[0] / Math.max(im.width, im.height));
+          var cv = document.createElement('canvas');
+          cv.width = Math.max(1, Math.round(im.width * sc));
+          cv.height = Math.max(1, Math.round(im.height * sc));
+          cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
+          var out = '';
+          try { out = cv.toDataURL('image/jpeg', spec[1]); } catch(e){}
+          URL.revokeObjectURL(objUrl);
+          if(!out) return rej(new Error('encode fail'));
+          if(out.length > MAXLEN && i < STEPS.length - 1) return res(compress(file, i + 1));
+          res(out);
+        };
+        im.onerror = function(){ URL.revokeObjectURL(objUrl); rej(new Error('decode fail')); };
+        im.src = objUrl;
+      });
+    }
+
+    /* 拉某类槽位的全部格子 → { 0:{url,rev}, 1:{...} }（同一 ix 取最新） */
+    function loadAll(key){
+      return withTimeout(rows('&key=eq.' + encodeURIComponent(key) + '&order=created_at.desc'), 9000)
+        .then(function(list){
+          var map = {}, at = {};
+          (list || []).forEach(function(row){
+            if(!row || !row.rev || !row.url || row.ix === undefined) return;
+            var t = Date.parse(row.created_at) || 0;
+            if(!map[row.ix] || t >= at[row.ix]){ map[row.ix] = { url: row.url, rev: row.rev }; at[row.ix] = t; }
+          });
+          return map;
+        })
+        .catch(function(){ return {}; });
+    }
+
+    /* 存：同一 (page,key,ix) 只留一行，有则 PATCH 无则 POST；以回读 rev 为准判成败 */
+    function save(dataUrl, key, ix){
+      var rev = Date.now();
+      return withTimeout(rows('&key=eq.' + encodeURIComponent(key) + '&ix=eq.' + encodeURIComponent(ix) + '&limit=1'), 9000)
+        .then(function(list){
+          var row = list && list[0];
+          var body = JSON.stringify(row && row.id != null
+            ? { url: dataUrl, rev: rev, updated_at: new Date().toISOString() }
+            : { page: CFG.page, key: key, ix: ix, url: dataUrl, rev: rev, created_at: new Date().toISOString() });
+          return fetch(base + ((row && row.id != null) ? ('?id=eq.' + encodeURIComponent(row.id)) : ''), {
+            method: (row && row.id != null) ? 'PATCH' : 'POST',
+            headers: head({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
+            body: body
+          });
+        })
+        .then(function(){ return withTimeout(rows('&key=eq.' + encodeURIComponent(key) + '&ix=eq.' + encodeURIComponent(ix) + '&limit=1'), 9000); })
+        .then(function(chk){
+          var got = chk && chk[0];
+          if(got && String(got.rev) === String(rev)) return { url: dataUrl, rev: rev };
+          throw new Error('cloud save verify fail');
+        });
+    }
+
+    /* 删槽位（长按清空用） */
+    function forget(key, ix){
+      return withTimeout(rows('&key=eq.' + encodeURIComponent(key) + '&ix=eq.' + encodeURIComponent(ix) + '&limit=1'), 9000)
+        .then(function(list){
+          var row = list && list[0];
+          if(!row || row.id == null) return;
+          return fetch(base + '?id=eq.' + encodeURIComponent(row.id), {
+            method: 'DELETE', headers: head({ Prefer: 'return=minimal' })
+          });
+        }).catch(function(){});
+    }
+
+    return { loadAll: loadAll, save: save, forget: forget, compress: compress };
+  })();
+
+  /* ---------- 板评/话术：老板自定义上传图片 ---------- */
+  var upInput = document.getElementById('upInput');
+  var upBox = null;        /* 当前要填的上传框 */
+  var justCleared = false; /* 长按清空后松手的那次 click 不再弹文件选择器 */
+  document.querySelectorAll('.ph.up').forEach(function(box){
+    box.addEventListener('click', function(){
+      if(justCleared){ justCleared = false; return; }
+      if(box.classList.contains('full')){
+        var im = box.querySelector('img');
+        if(im) openPic(im.getAttribute('src'));   /* 已有图：全屏看 */
+        return;
+      }
+      upBox = box;
+      upInput.value = '';
+      upInput.click();
+    });
+    box.addEventListener('contextmenu', function(e){ e.preventDefault(); });   /* 长按不弹系统菜单 */
+    /* 长按 650ms 清空槽位（本机 + 云端一起删），用于换图 */
+    var pressT = null;
+    box.addEventListener('pointerdown', function(){
+      pressT = setTimeout(function(){
+        pressT = null;
+        if(!box.classList.contains('full')) return;
+        var im = box.querySelector('img'); if(im) im.remove();
+        box.classList.remove('full');
+        justCleared = true;
+        setTimeout(function(){ justCleared = false; }, 500);
+        var ck = box.getAttribute('data-ck'), cx = parseInt(box.getAttribute('data-ix'), 10);
+        if(ck != null && !isNaN(cx)) Cloud.forget(ck, cx);
+      }, 650);
+    });
+    ['pointerup','pointerleave','pointercancel'].forEach(function(ev){
+      box.addEventListener(ev, function(){ if(pressT){ clearTimeout(pressT); pressT = null; } });
+    });
+  });
+  upInput.addEventListener('change', function(){
+    var f = upInput.files && upInput.files[0];
+    if(!f || !upBox) return;
+    var box = upBox;
+    upBox = null;
+    var r = new FileReader();
+    r.onload = function(){
+      var im = document.createElement('img');
+      im.src = r.result;
+      box.appendChild(im);
+      box.classList.add('full');
+      /* 云端持久化 */
+      var ck = box.getAttribute('data-ck'), cx = parseInt(box.getAttribute('data-ix'), 10);
+      if(ck != null && !isNaN(cx)){
+        Cloud.compress(f).then(function(dataUrl){
+          return Cloud.save(dataUrl, ck, cx);
+        }).then(function(){
+          im.src = dataUrl;   /* 换成压缩版，其他访客看到的与云上一致 */
+        }).catch(function(){});
+      }
+    };
+    r.readAsDataURL(f);
+  });
+  /* 开页拉云端图回填（老板上次传的，所有访客可见）。
+   * 延后一拍执行：书页槽位数组 slots 在本脚本后面才赋值。 */
+  setTimeout(function cloudFill(){
+    function fillUp(key, sel){
+      Cloud.loadAll(key).then(function(map){
+        Object.keys(map).forEach(function(ix){
+          var box = document.querySelector(sel + '[data-ix="' + ix + '"]');
+          if(!box || box.classList.contains('full')) return;
+          var im = document.createElement('img');
+          im.src = map[ix].url;
+          box.appendChild(im);
+          box.classList.add('full');
+        });
+      });
+    }
+    fillUp('sc', '.ph.up.sc-up');
+    fillUp('rv', '.ph.up.rv-up');
+    Cloud.loadAll('bk').then(function(map){
+      Object.keys(map).forEach(function(ix){
+        var s = slots && slots[ix];
+        if(!s || s.classList.contains('full')) return;
+        s.classList.add('full');
+        s.style.backgroundImage = 'url(' + map[ix].url + ')';
+        s.textContent = '';
+      });
+    });
+  }, 600);
+
+  /* ---------- 话术原图：点击全屏看细节 ---------- */
+  var picVeil = document.getElementById('picVeil');
+  var picVeilImg = document.getElementById('picVeilImg');
+  function openPic(src){
+    picVeilImg.setAttribute('src', src);
+    picVeil.style.display = 'block';
+    if(G && !reduce) G.fromTo(picVeil, {opacity:0}, {opacity:1, duration:.25, ease:'power1.out'});
+  }
+  document.querySelectorAll('#page-scripts .ph.pic img, #page-reviews .ph.pic img').forEach(function(img){
+    img.parentElement.addEventListener('click', function(){
+      openPic(img.getAttribute('src'));
+    });
+  });
+  picVeil.addEventListener('click', function(){
+    if(G && !reduce){
+      G.to(picVeil, {opacity:0, duration:.2, ease:'power1.in', onComplete:function(){
+        picVeil.style.display = 'none'; picVeilImg.setAttribute('src', '');
+      }});
+    } else {
+      picVeil.style.display = 'none'; picVeilImg.setAttribute('src', '');
+    }
+  });
+  document.getElementById('vibeChat').addEventListener('click', function(){
+    vcNext();
+    if(vcTimer) clearInterval(vcTimer);
+    vcTimer = setInterval(vcNext, 7000);
+  });
+
+  /* ---------- 书：3D 多张翻页 + 自定义上传图片 ---------- */
+  var book = document.getElementById('bookZone');
+  var sheets = ['bookFace','bp1','bp2','bp3'].map(function(id){ return document.getElementById(id); });
+  var flipped = 0, flipping = false;
+  function setZ(el, z){ el.style.zIndex = z; }
+  sheets.forEach(function(el, i){ setZ(el, sheets.length - i); });   /* 封面最上 */
+  function flipTo(el, angle, done){
+    if(G && !reduce){
+      G.to(el, {rotationY: angle, duration:.95, ease:'power2.inOut', onComplete:function(){ if(done) done(); }});
+    } else {
+      el.style.transition = 'transform .9s cubic-bezier(.4,0,.2,1)';
+      el.style.transform = 'rotateY(' + angle + 'deg)';
+      setTimeout(function(){ if(done) done(); }, 900);
+    }
+  }
+  book.addEventListener('click', function(e){
+    if(flipping) return;
+    /* 点在左半边：无论是否落在图片上都往回翻（返回优先） */
+    var r = book.getBoundingClientRect();
+    var goBack = (e.clientX - r.left) < r.width * 0.35;
+    if(!goBack){
+      /* 点在书页图片上：全屏看原图，不翻页 */
+      var t = e.target.closest ? e.target.closest('.pl.full, .book-cv') : null;
+      if(t){
+        e.stopPropagation();
+        if(t.classList.contains('book-cv')){ openPic(t.getAttribute('src')); }
+        else {
+          var m = (t.style.backgroundImage || '').match(/url\(["']?(.+?)["']?\)/);
+          if(m) openPic(m[1]);
+        }
+        return;
+      }
+    }
+    if(goBack && flipped > 0){
+      flipping = true;
+      flipped--;
+      var el = sheets[flipped], idx = flipped;
+      setZ(el, 60);
+      flipTo(el, 0, function(){ setZ(el, sheets.length - idx); flipping = false; });
+    } else if(flipped < sheets.length){
+      /* 翻下一张：动画时浮到最上，落定后按左堆叠顺序压层 */
+      flipping = true;
+      var el2 = sheets[flipped], idx2 = flipped;
+      setZ(el2, 50 + idx2);
+      flipTo(el2, -180, function(){ setZ(el2, 1 + idx2); flipping = false; });
+      flipped++;
+    } else {
+      /* 翻完了：整本合上（倒序快速翻回），复位 */
+      flipping = true;
+      sheets.slice().reverse().forEach(function(el, k){
+        setTimeout(function(){
+          setZ(el, 60);
+          flipTo(el, 0, function(){ setZ(el, sheets.length - sheets.indexOf(el)); });
+        }, k * 140);
+      });
+      setTimeout(function(){ flipping = false; flipped = 0; }, sheets.length * 140 + 1000);
+    }
+  });
+  /* 自定义上传图片：按槽位顺序填入（正面→背面） */
+  var slots = Array.prototype.slice.call(document.querySelectorAll('#bookZone .pl[data-slot]'));
+  var upBtn = document.getElementById('bkUp'), upFile = document.getElementById('bkFile');
+  upBtn.addEventListener('click', function(e){ e.stopPropagation(); upFile.click(); });
+  upFile.addEventListener('change', function(){
+    var files = Array.prototype.slice.call(upFile.files || []);
+    var si = 0;
+    while(si < slots.length && slots[si].classList.contains('full')) si++;   /* 跳过已填槽 */
+    files.forEach(function(f){
+      if(si >= slots.length) return;
+      var target = si++;                                                     /* 槽位序号 = 云端 ix */
+      var r = new FileReader();
+      r.onload = function(){
+        var s = slots[target];
+        s.classList.add('full');
+        s.style.backgroundImage = 'url(' + r.result + ')';
+        s.textContent = '';
+        /* 云端持久化 */
+        Cloud.compress(f).then(function(dataUrl){
+          return Cloud.save(dataUrl, 'bk', target);
+        }).then(function(dataUrl){
+          s.style.backgroundImage = 'url(' + dataUrl + ')';
+        }).catch(function(){});
+      };
+      r.readAsDataURL(f);
+    });
+    upFile.value = '';
+  });
+
+  /* ---------- 像素风绘制：土星 / 香烟（参考图风格） ---------- */
+  var NS = 'http://www.w3.org/2000/svg';
+  function px(svg, cx, cy, cell, color, opac){
+    var r = document.createElementNS(NS, 'rect');
+    r.setAttribute('x', cx * cell); r.setAttribute('y', cy * cell);
+    r.setAttribute('width', cell); r.setAttribute('height', cell);
+    r.setAttribute('fill', color);
+    if(opac != null) r.setAttribute('opacity', opac);
+    svg.appendChild(r);
+  }
+  /* 像素土星：网格逐格判定（球体斜条纹 + 椭圆环，环后半被球遮挡） */
+  function drawSaturn(svg, cols, rows, cell, cx, cy, rb, rRx, rRy, rIn, stripe, solid){
+    for(var y = 0; y < rows; y++){
+      for(var x = 0; x < cols; x++){
+        var nx = (x + .5 - cx) / rb, ny = (y + .5 - cy) / rb;
+        var d = Math.sqrt(nx * nx + ny * ny);
+        var ex = (x + .5 - cx) / rRx, ey = (y + .5 - cy) / rRy;
+        var ed = Math.sqrt(ex * ex + ey * ey);
+        var inRing = ed <= 1 && ed >= rIn;
+        var inBall = d <= 1;
+        var black = false;
+        if(inRing && (!inBall || ny >= -.04)) black = true;         /* 环：前半或球外 */
+        else if(inBall){
+          if(solid) black = true;
+          else if(d > .88) black = true;                            /* 球轮廓描边 */
+          else {
+            var s = ((x - y) % stripe + stripe) % stripe;           /* "\" 走向条纹 */
+            if(d < .86 && s < Math.ceil(stripe * .45)) black = true;
+          }
+        }
+        if(black) px(svg, x, y, cell, '#111111');
+      }
+    }
+  }
+  /* 像素香烟（竖直版，书页用）：烟身 + 正弦波浪烟雾 */
+  function drawCig(svg, cell){
+    var cols = 16, rows = 30, cx = 7.5;
+    /* 烟身 */
+    for(var y = 13; y <= 29; y++){
+      for(var x = 6; x <= 9; x++){
+        var edge = (x === 6 || x === 9 || y === 29);
+        var head = (y <= 14);                                       /* 燃烧头 */
+        var line = (y === 21);                                      /* 分隔线 */
+        var filter = (y >= 22 && y < 29 && ((x + y) % 2 === 0));    /* 滤嘴斜纹 */
+        if(edge || head || line || filter) px(svg, x, y, cell, '#111111');
+      }
+    }
+    /* 烟雾：两股错相正弦，向上渐细 */
+    for(var yy = 1; yy <= 12; yy++){
+      var t = (12 - yy);
+      var w = yy > 9 ? 0 : 1;
+      var x1 = Math.round(cx + 3.4 * Math.sin(t * .62));
+      var x2 = Math.round(cx + 3.4 * Math.sin(t * .62 + 2.6));
+      px(svg, x1, yy, cell, '#111111', .85 - t * .04);
+      if(yy % 2 === 0) px(svg, x2, yy, cell, '#111111', .5 - t * .03);
+      if(w) px(svg, x1 + 1, yy, cell, '#111111', .5 - t * .03);
+    }
+  }
+  /* 香烟（首页用，二维扁平 + 一点点体积感）：
+     ——扁平底色 + 单条亮部/暗部（简单两段渐变），不做真实材质；
+     ——整体描边稍粗，偏插画感；
+     ——火头是单纯的红色圆点 + 柔和红晕，慢慢呼吸。 */
+  function drawCigH(svg, cell){
+    var defs = document.createElementNS(NS, 'defs');
+    defs.innerHTML =
+      '<linearGradient id="cigBody" x1="0" y1="0" x2="0" y2="1">'+
+        '<stop offset="0%"  stop-color="#ffffff"/>'+
+        '<stop offset="35%" stop-color="#fbfaf8"/>'+
+        '<stop offset="72%" stop-color="#e8e6e1"/>'+
+        '<stop offset="100%" stop-color="#cfccc5"/>'+
+      '</linearGradient>'+
+      '<linearGradient id="cigFlt" x1="0" y1="0" x2="0" y2="1">'+
+        '<stop offset="0%"  stop-color="#fdf6ea"/>'+
+        '<stop offset="55%" stop-color="#efe4d1"/>'+
+        '<stop offset="100%" stop-color="#d9cbbb"/>'+
+      '</linearGradient>'+
+      '<radialGradient id="cigGlow" cx="50%" cy="50%" r="50%">'+
+        '<stop offset="0%"  stop-color="rgba(206,52,52,.30)"/>'+
+        '<stop offset="62%" stop-color="rgba(206,52,52,.12)"/>'+
+        '<stop offset="100%" stop-color="rgba(206,52,52,0)"/>'+
+      '</radialGradient>';
+    svg.appendChild(defs);
+    function el(tag, attrs){
+      var n = document.createElementNS(NS, tag);
+      for(var k in attrs) n.setAttribute(k, attrs[k]);
+      svg.appendChild(n);
+      return n;
+    }
+    var OUT = 'rgba(17,17,17,.55)', OUTW = 1.1;
+    /* ① 滤嘴（左端，圆头，扁平米色） */
+    el('rect', {x:4, y:13, width:30, height:14, rx:7, fill:'url(#cigFlt)', stroke:OUT, 'stroke-width':OUTW});
+    el('line', {x1:22, y1:13.8, x2:22, y2:26.2, stroke:'rgba(17,17,17,.20)', 'stroke-width':1});
+    el('line', {x1:27, y1:13.8, x2:27, y2:26.2, stroke:'rgba(17,17,17,.13)', 'stroke-width':1});
+    /* ② 接缝环 */
+    el('rect', {x:33, y:12.6, width:3.4, height:14.8, rx:1.4, fill:'#efece2', stroke:OUT, 'stroke-width':OUTW});
+    /* ③ 烟身：扁平白 + 上下各一条极简明暗，即是全部体积感 */
+    el('rect', {x:36, y:12.8, width:128, height:14.4, rx:2.2, fill:'url(#cigBody)', stroke:OUT, 'stroke-width':OUTW});
+    el('rect', {x:37.5, y:14.4, width:125, height:3.2, rx:1.6, fill:'rgba(255,255,255,.9)'});   /* 亮部 */
+    el('rect', {x:37.5, y:24.2, width:125, height:2.2, rx:1.1, fill:'rgba(17,17,17,.07)'});     /* 暗部 */
+    /* ④ 燃烧线 */
+    el('line', {x1:164, y1:13, x2:164, y2:27, stroke:'rgba(17,17,17,.45)', 'stroke-width':1.2});
+    /* ⑤ 火头：红色圆点 + 红晕（呼吸） */
+    var glow  = el('circle', {cx:172, cy:20, r:14, fill:'url(#cigGlow)'});
+    el('circle', {cx:172, cy:20, r:7.6, fill:'#c22828', stroke:'rgba(17,17,17,.45)', 'stroke-width':.9});
+    var ember = el('circle', {cx:169.6, cy:17.8, r:2.9, fill:'#ef7a4a', opacity:.85});
+    /* ⑥ 灰烬尖端（扁平浅灰） */
+    el('path', {d:'M179.5 15.6 Q 188 17 186.6 20 Q 188.6 22.6 180 24.6 Z', fill:'#dcdad4', stroke:OUT, 'stroke-width':OUTW});
+    function breathe(node, vals, dur){
+      var a = document.createElementNS(NS, 'animate');
+      a.setAttribute('attributeName', 'opacity');
+      a.setAttribute('values', vals);
+      a.setAttribute('dur', dur);
+      a.setAttribute('repeatCount', 'indefinite');
+      node.appendChild(a);
+    }
+    breathe(ember, '1;.45;1', '2.6s');
+    breathe(glow, '.6;.28;.6', '2.6s');
+  }
+  /* 写实蛇：沿中轴采样生成实心蛇身（粗细渐变）+ 鳞片网格 + 明暗渐变 + 脊线高光 + 杏仁头吐信 */
+  function buildSnake(svg, uid, axisD, rMax){
+    var defs = document.createElementNS(NS, 'defs');
+    defs.innerHTML =
+      '<linearGradient id="'+uid+'g" x1="0%" y1="0%" x2="100%" y2="100%">'+
+        '<stop offset="0%" stop-color="#a05050"/>'+
+        '<stop offset="45%" stop-color="#701f1f"/>'+
+        '<stop offset="100%" stop-color="#3c0c0c"/>'+
+      '</linearGradient>'+
+      '<pattern id="'+uid+'s" width="16" height="13" patternUnits="userSpaceOnUse" patternTransform="rotate(18)">'+
+        '<path d="M0 6.5 L8 0 L16 6.5 L8 13 Z" fill="none" stroke="rgba(30,4,4,.55)" stroke-width="1.1"/>'+
+      '</pattern>'+
+      '<filter id="'+uid+'b" x="-60%" y="-60%" width="220%" height="220%">'+
+        '<feGaussianBlur stdDeviation="5"/>'+
+      '</filter>';
+    svg.appendChild(defs);
+
+    var probe = document.createElementNS(NS, 'path');
+    probe.setAttribute('d', axisD);
+    probe.setAttribute('fill', 'none');
+    svg.appendChild(probe);
+    var L = probe.getTotalLength();
+    var N = 150, C = [], R = [];
+    for(var i = 0; i <= N; i++){
+      var t = i / N;
+      var pt = probe.getPointAtLength(t * L);
+      var prof;                                             /* 尾细 → 身粗 → 颈收 */
+      if(t < .14) prof = .1 + (t / .14) * .55;
+      else if(t > .86) prof = .62 - ((t - .86) / .14) * .38;
+      else prof = .62 + Math.sin((t - .14) / .72 * Math.PI) * .38;
+      C.push([pt.x, pt.y]);
+      R.push(Math.max(1.4, prof * rMax));
+    }
+    svg.removeChild(probe);
+
+    function tangent(i){
+      var a = C[Math.max(0, i - 1)], b = C[Math.min(N, i + 1)];
+      var dx = b[0] - a[0], dy = b[1] - a[1], l = Math.sqrt(dx * dx + dy * dy) || 1;
+      return [dx / l, dy / l];
+    }
+    function side(sgn, rev){
+      var d = '', first = true;
+      for(var k = 0; k <= N; k++){
+        var i = rev ? N - k : k;
+        var tg = tangent(i);
+        var x = C[i][0] - tg[1] * R[i] * sgn;
+        var y = C[i][1] + tg[0] * R[i] * sgn;
+        d += (first ? 'M' : 'L') + x.toFixed(1) + ' ' + y.toFixed(1) + ' ';
+        first = false;
+      }
+      return d;
+    }
+    var bodyD = side(1, false) + side(-1, true).replace('M', 'L') + 'Z';
+
+    function layer(fill, extra){
+      var el = document.createElementNS(NS, 'path');
+      el.setAttribute('d', bodyD);
+      el.setAttribute('fill', fill);
+      if(extra) for(var k in extra) el.setAttribute(k, extra[k]);
+      svg.appendChild(el);
+    }
+    layer('url(#' + uid + 'g)', { stroke:'#2e0808', 'stroke-width':'1', 'stroke-opacity':'.55' });
+    layer('url(#' + uid + 's)');
+
+    /* 脊线高光（中段一段，模糊） */
+    var hl = document.createElementNS(NS, 'path');
+    hl.setAttribute('d', axisD);
+    hl.setAttribute('fill', 'none');
+    hl.setAttribute('stroke', '#e8b8b8');
+    hl.setAttribute('stroke-width', (rMax * .32).toFixed(1));
+    hl.setAttribute('stroke-linecap', 'round');
+    hl.setAttribute('opacity', '.3');
+    hl.setAttribute('filter', 'url(#' + uid + 'b)');
+    hl.setAttribute('stroke-dasharray', (L * .5).toFixed(0) + ' ' + (L * 4).toFixed(0));
+    hl.setAttribute('stroke-dashoffset', (-L * .22).toFixed(0));
+    svg.appendChild(hl);
+
+    /* 杏仁头：沿末端切向，前尖后圆 */
+    var e = C[N], tg = tangent(N);                          /* tg 指向头前方 */
+    var nx = -tg[1], ny = tg[0];
+    var hLen = rMax * 1.05, hWid = rMax * .68;
+    var backX = e[0] - tg[0] * hLen * .38, backY = e[1] - tg[1] * hLen * .38;
+    var tipX  = e[0] + tg[0] * hLen * .72, tipY  = e[1] + tg[1] * hLen * .72;
+    var s1x = e[0] + nx * hWid, s1y = e[1] + ny * hWid;
+    var s2x = e[0] - nx * hWid, s2y = e[1] - ny * hWid;
+    var head = document.createElementNS(NS, 'path');
+    head.setAttribute('d',
+      'M' + backX.toFixed(1) + ' ' + backY.toFixed(1) +
+      ' Q' + s1x.toFixed(1) + ' ' + s1y.toFixed(1) + ' ' + tipX.toFixed(1) + ' ' + tipY.toFixed(1) +
+      ' Q' + s2x.toFixed(1) + ' ' + s2y.toFixed(1) + ' ' + backX.toFixed(1) + ' ' + backY.toFixed(1) + 'Z');
+    head.setAttribute('fill', 'url(#' + uid + 'g)');
+    head.setAttribute('stroke', '#2e0808');
+    head.setAttribute('stroke-width', '1');
+    head.setAttribute('stroke-opacity', '.55');
+    svg.appendChild(head);
+    var headScl = head.cloneNode();
+    headScl.setAttribute('fill', 'url(#' + uid + 's)');
+    headScl.setAttribute('stroke', 'none');
+    svg.appendChild(headScl);
+
+    /* 眼 + 信子 */
+    var eyeY1 = e[0] + tg[0] * hLen * .1 + nx * hWid * .5;
+    var eyeY2 = e[1] + tg[1] * hLen * .1 + ny * hWid * .5;
+    var eye = document.createElementNS(NS, 'circle');
+    eye.setAttribute('cx', eyeY1.toFixed(1));
+    eye.setAttribute('cy', eyeY2.toFixed(1));
+    eye.setAttribute('r', '2.6');
+    eye.setAttribute('fill', '#f5e9e0');
+    svg.appendChild(eye);
+    var pup = eye.cloneNode();
+    pup.setAttribute('r', '1.2'); pup.setAttribute('fill', '#1a0404');
+    svg.appendChild(pup);
+
+    var tongueD =
+      'M' + tipX.toFixed(1) + ' ' + tipY.toFixed(1) +
+      ' q' + (tg[0] * 14 - tg[1] * 4).toFixed(1) + ' ' + (tg[1] * 14 + tg[0] * 4).toFixed(1) +
+      ' ' + (tg[0] * 26 - tg[1] * 10).toFixed(1) + ' ' + (tg[1] * 26 + tg[0] * 10).toFixed(1) +
+      ' m' + (-tg[0] * 26 + tg[1] * 10).toFixed(1) + ' ' + (-tg[1] * 26 - tg[0] * 10).toFixed(1) +
+      ' q' + (tg[0] * 14 + tg[1] * 4).toFixed(1) + ' ' + (tg[1] * 14 - tg[0] * 4).toFixed(1) +
+      ' ' + (tg[0] * 26 + tg[1] * 10).toFixed(1) + ' ' + (tg[1] * 26 - tg[0] * 10).toFixed(1);
+    var tongue = document.createElementNS(NS, 'path');
+    tongue.setAttribute('d', tongueD);
+    tongue.setAttribute('fill', 'none');
+    tongue.setAttribute('stroke', '#8c2430');
+    tongue.setAttribute('stroke-width', '1.6');
+    tongue.setAttribute('stroke-linecap', 'round');
+    svg.appendChild(tongue);
+  }
+
+  var cigSvg = document.querySelector('.home-cig .cig-svg');
+  if(cigSvg) drawCigH(cigSvg, 4);
+
+  /* ---------- 像素文字：canvas 低分辨率绘制 + 关闭平滑放大 ---------- */
+  (function(){
+    function drawPx(cv){
+      var txt = cv.getAttribute('data-text') || '';
+      if(!txt) return;
+      var fs = parseInt(cv.getAttribute('data-fs') || '10', 10);
+      var scale = parseFloat(cv.getAttribute('data-scale') || '2');
+      var fam = cv.getAttribute('data-font') || '"PingFang SC","Microsoft YaHei",sans-serif';
+      var slack = parseFloat(cv.getAttribute('data-slack') || '1.25');
+      var probe = document.createElement('canvas').getContext('2d');
+      probe.font = fs + 'px ' + fam;
+      try{ probe.letterSpacing = '2px'; }catch(e){}
+      /* 余量放宽防止实际字体比测量值宽时裁掉最后一个字；data-slack 可收紧让框贴字 */
+      var w = Math.ceil(probe.measureText(txt).width * slack) + 4;
+      cv.width = w; cv.height = fs + 2;
+      var cx = cv.getContext('2d');
+      cx.font = fs + 'px ' + fam;
+      try{ cx.letterSpacing = '2px'; }catch(e){}
+      cx.textBaseline = 'top';
+      /* 白色像素描边：用于叠在深色素材上的文字（如首页戒指环） */
+      if(cv.getAttribute('data-outline')){
+        cx.fillStyle = '#ffffff';
+        [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]].forEach(function(o){
+          cx.fillText(txt, 1 + o[0], 1 + o[1]);
+        });
+      }
+      cx.fillStyle = cv.getAttribute('data-color') || '#111111';
+      cx.fillText(txt, 1, 1);
+      /* data-snap：把抗锯齿软边压成硬边（alpha 二值化 + 颜色归纯），放大后是干净利落的像素块 */
+      if(cv.getAttribute('data-snap')){
+        try{
+          var idata = cx.getImageData(0, 0, cv.width, cv.height), dd = idata.data;
+          var col = (cv.getAttribute('data-color') || '#111111').replace('#','');
+          if(col.length === 3) col = col[0]+col[0]+col[1]+col[1]+col[2]+col[2];
+          var cr = parseInt(col.substr(0,2),16), cg = parseInt(col.substr(2,2),16), cb = parseInt(col.substr(4,2),16);
+          for(var i = 0; i < dd.length; i += 4){
+            if(dd[i+3] > 90){ dd[i] = cr; dd[i+1] = cg; dd[i+2] = cb; dd[i+3] = 255; }
+            else { dd[i+3] = 0; }
+          }
+          cx.putImageData(idata, 0, 0);
+        }catch(e){}
+      }
+      cv.style.width  = (w * scale) + 'px';
+      cv.style.height = ((fs + 2) * scale) + 'px';
+    }
+    document.querySelectorAll('canvas.px-canvas').forEach(drawPx);
+    /* 字体真正加载完成后重画一次，避免回退字体导致宽度偏差 */
+    if(document.fonts && document.fonts.ready){
+      document.fonts.ready.then(function(){
+        document.querySelectorAll('canvas.px-canvas').forEach(drawPx);
+      });
+    }
+  })();
+  var bkCig = document.querySelector('.bk-cig .cig-svg');
+  if(bkCig) drawCig(bkCig, 3);
+
+  /* ---------- 开场序章：无人物，只有文字；拉远后进入首页 ---------- */
+  var introEl = document.getElementById('intro');
+  var introDone = false, introTl = null;
+
+  /* 撞击 BGM：视频里提取的音频，撞击那一下起播（浏览器拦自动播时降级为首次触摸起播） */
+  var bgm = document.getElementById('bgm');
+  var bgmPlayed = false;
+  function playBgm(){
+    if(bgmPlayed || !bgm) return;
+    bgmPlayed = true;
+    bgm.volume = .3;
+    var pr = bgm.play();
+    if(pr && pr.catch){
+      pr.catch(function(){
+        var retry = function(){
+          document.removeEventListener('pointerdown', retry);
+          bgm.play().catch(function(){});
+        };
+        document.addEventListener('pointerdown', retry);
+      });
+    }
+  }
+
+  /* 音量渐变：关闭音乐时不戛然而止，留 2 秒尾音；开启时 0.9 秒淡入 */
+  var fadeTimer = null;
+  function fadeBgm(to, dur){
+    if(!bgm) return;
+    if(fadeTimer){ clearInterval(fadeTimer); fadeTimer = null; }
+    var from = bgm.volume, t0 = Date.now();
+    if(to > 0 && bgm.paused){ var pr = bgm.play(); if(pr && pr.catch) pr.catch(function(){}); }
+    fadeTimer = setInterval(function(){
+      var k = Math.min(1, (Date.now() - t0) / dur);
+      try{ bgm.volume = Math.max(0, Math.min(1, from + (to - from) * k)); }catch(e){}
+      if(k >= 1){
+        if(fadeTimer){ clearInterval(fadeTimer); fadeTimer = null; }
+        if(to === 0) bgm.pause();
+      }
+    }, 50);
+  }
+
+  /* 右上角线条玫瑰 = 音乐开关 */
+  var roseMute = document.getElementById('roseMute');
+  var musicOn = true;
+  if(roseMute){
+    roseMute.addEventListener('click', function(e){
+      e.stopPropagation();
+      musicOn = !musicOn;
+      roseMute.classList.toggle('off', !musicOn);
+      if(!musicOn) fadeBgm(0, 2000);      /* 尾音：2 秒渐弱后再停 */
+      else fadeBgm(.3, 900);
+    });
+  }
+  function showRose(){
+    if(!roseMute) return;
+    if(G && !reduce) G.to(roseMute, {autoAlpha:1, duration:.6, delay:.3});
+    else { roseMute.style.opacity = '1'; roseMute.style.visibility = 'visible'; }
+  }
+
+  /* 文案逐字拆分 */
+  Array.prototype.forEach.call(document.querySelectorAll('#introTxt .ln'), function(p){
+    var s = p.textContent.replace(/\s/g,'');
+    p.textContent = '';
+    s.split('').forEach(function(ch){
+      var sp = document.createElement('span');
+      sp.className = 'char'; sp.textContent = ch;
+      p.appendChild(sp);
+    });
+  });
+
+  function chars(sel){ return document.querySelectorAll(sel + ' .char'); }
+
+  /* 字幕涟漪：以某句字幕为中心荡开一圈圆环 */
+  function lnRipple(line){
+    var r = document.getElementById('lnRipple');
+    if(!r || !line) return;
+    var lr = line.getBoundingClientRect();
+    var pr = line.offsetParent ? line.offsetParent.getBoundingClientRect() : {left:0, top:0};
+    var cx = lr.left + lr.width/2 - pr.left;
+    var cy = lr.top + lr.height/2 - pr.top;
+    r.style.left = (cx - 65) + 'px';
+    r.style.top  = (cy - 65) + 'px';
+    if(G){
+      G.killTweensOf(r);
+      G.fromTo(r, {scale:.3, autoAlpha:.85}, {scale:2.7, autoAlpha:0, duration:1.1, ease:'power2.out'});
+    }
+  }
+
+  function finishIntro(){
+    if(introDone) return;
+    introDone = true;
+    var homeEl = pages.home;
+    if(G && !reduce){
+      var out = G.timeline();
+      out.to('#introTxt, #introGlass, #lidTop, #lidBot, .intro-skip, .intro-grain', {autoAlpha:0, duration:.3})
+         .to('#intro .intro-bg', {scale:.88, duration:1.5, ease:'power2.inOut'}, '<')   /* 序章内容随镜头拉远缩小 */
+         .to('#intro', {autoAlpha:0, duration:.9, ease:'power1.inOut'}, '<.1')
+         .to(homeEl, {scale:1, duration:1.5, ease:'power2.out'}, '<')                   /* 首页从近景拉远就位 */
+         .to(homeEl, {autoAlpha:1, duration:.7, ease:'power1.in'}, '<.25')
+         .add(function(){ enterPage('home', true); }, 1.05)
+         .set('#intro', {display:'none'});
+      /* 主页停住：点击任意处才进画廊（不再自动跳转）；玫瑰音乐开关同时亮出 */
+      showRose();
+    } else {
+      introEl.style.display = 'none';
+      enterPage('home');
+      showRose();
+    }
+  }
+
+  function playIntro(){
+    var homeEl = pages.home;
+    if(!(G && !reduce)){ finishIntro(); return; }
+    G.set(homeEl, {autoAlpha:0, scale:1.22, transformOrigin:'50% 46%'});
+    G.set(kidsOf(homeEl), {autoAlpha:0});
+    introEl.classList.add('on');
+    /* 眼皮以闭合态起幕：开始界面（黑）淡出时露出的是黑眼皮，黑→黑无缝衔接，不再闪白 */
+    G.set('#lidTop', {scaleY:1});
+    G.set('#lidBot', {scaleY:1});
+    introTl = G.timeline({onComplete: finishIntro});
+    /* 0 - 0.55：黑幕延续开始界面；0.55 - 1.05 睁开露出空白 */
+    introTl.to('#lidTop', {scaleY:0, duration:.5, ease:'power2.out'}, .55)
+           .to('#lidBot', {scaleY:0, duration:.5, ease:'power2.out'}, .55)
+           /* 撞击：整张屏幕（手机框）猛地抖一下；同时音乐起 */
+    introTl.add(playBgm, 1.05)
+    introTl.fromTo('#phone', {x:0}, {x:12, duration:.05, repeat:9, yoyo:true, ease:'none'}, 1.05)
+           /* 眨眼：黑屏合上（像人被撞后闭眼） */
+           .to('#lidTop', {scaleY:1, duration:.13, ease:'power2.in'}, 1.7)
+           .to('#lidBot', {scaleY:1, duration:.13, ease:'power2.in'}, 1.7)
+           /* 睁开眼：第一个画面（黑白背景）才随睁眼浮现 */
+           .to('#lidTop', {scaleY:0, duration:.75, ease:'power2.out'}, 2.05)
+           .to('#lidBot', {scaleY:0, duration:.75, ease:'power2.out'}, 2.05)
+           .fromTo('.intro-bg', {autoAlpha:0}, {autoAlpha:1, duration:.8, ease:'power1.out'}, 2.15)
+           .fromTo('.intro-grain', {autoAlpha:0}, {autoAlpha:.55, duration:.8}, 2.15)
+           .fromTo('.intro-skip', {autoAlpha:0}, {autoAlpha:1, duration:.8}, 2.15)
+           .fromTo(chars('#lnA'), {autoAlpha:0}, {autoAlpha:1, duration:.5, ease:'power1.out'}, 3.1)
+           .add(function(){ lnRipple(document.getElementById('lnA')); }, 3.15)
+           /* 倒在桌沿的酒杯滚入，长酒线从杯口淌下，地面酒滩随之长出 */
+           /* 酒杯整个画面（原图）滚入；酒线/酒滩由图片自身承载，做自上而下的「流出」显现 */
+           .fromTo('#introGlass', {autoAlpha:0, x:-18, rotate:-5}, {autoAlpha:1, x:0, rotate:0, duration:.6, ease:'power2.out'}, 3.75)
+           .fromTo('#introGlass .spill-img', {clipPath:'inset(0% 0% 100% 0%)'}, {clipPath:'inset(0% 0% 0% 0%)', duration:1.5, ease:'power1.in'}, 4.0)
+           .to('#introGlass .spill-img', {y:1.5, duration:.9, yoyo:true, repeat:2, ease:'sine.inOut'}, 5.35)
+           .fromTo(chars('#lnB'), {autoAlpha:0}, {autoAlpha:1, duration:.5, ease:'power1.out'}, 4.6)
+           .add(function(){ lnRipple(document.getElementById('lnB')); }, 4.65)
+           /* 戒指滚落：第二句话说出前落在桌面 */
+           .fromTo('#introRing', {autoAlpha:0, x:34, rotation:-38}, {autoAlpha:1, x:0, rotation:-14, duration:.55, ease:'power2.out'}, 5.22)
+           .to('#introRing', {y:3, duration:.14, ease:'power1.in'}, 5.22)
+           .to('#introRing', {y:0, duration:.3, ease:'bounce.out'}, 5.36)
+           .fromTo(chars('#lnC'), {autoAlpha:0}, {autoAlpha:1, duration:.5, ease:'power1.out'}, 5.9)
+           .add(function(){ lnRipple(document.getElementById('lnC')); }, 5.95)
+           /* 停一拍 → 黑屏合眼，再转入主页 */
+           .to({}, {duration:1.1})
+           .to('#lidTop', {scaleY:1, duration:.6, ease:'power2.inOut'}, '+=0.2')
+           .to('#lidBot', {scaleY:1, duration:.6, ease:'power2.inOut'}, '<')
+           .to({}, {duration:.45});
+    introEl.addEventListener('click', function(){
+      if(introTl) introTl.kill();
+      finishIntro();
+    });
+  }
+
+  /* ---------- 开始界面：点击 → 序章（撞击时音乐起播，点击即用户手势，不会被拦截） ---------- */
+  var startScr = document.getElementById('startScr');
+  var gameStarted = false;
+  function beginGame(){
+    if(gameStarted) return;
+    gameStarted = true;
+    if(G && !reduce){
+      /* 过场：微缩蓄力 → 波纹从中心扩散 → 边框与字原地安静淡出（不冲屏）→ 黑幕接序章 */
+      var rings = startScr.querySelectorAll('.warp-ring');
+      var warp = G.timeline({onComplete:function(){ startScr.style.display = 'none'; }});
+      warp.to('.ss-frame, .ss-sub', {scale:.92, duration:.15, ease:'power2.inOut'})
+          .fromTo(rings, {scale:.25, autoAlpha:.9}, {scale:4.6, autoAlpha:0, duration:.8, ease:'power2.out', stagger:.16}, '+=0.02')
+          .to('.ss-frame', {autoAlpha:0, scale:.96, duration:.45, ease:'power1.inOut'}, '<')
+          .to('.ss-sub',   {autoAlpha:0, duration:.35, ease:'power1.inOut'}, '<.05')
+          .set(startScr, {visibility:'hidden'});
+    } else {
+      startScr.style.display = 'none';
+    }
+    playIntro();
+  }
+  startScr.addEventListener('click', beginGame);
+  if(window.__SKIP_INTRO__){          /* 无头截图：跳过开始界面直接进序章 */
+    startScr.style.display = 'none';
+    gameStarted = true;
+    playIntro();
+  }
+})();
+</script>
+</body>
+</html>
