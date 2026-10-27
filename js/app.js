@@ -895,8 +895,16 @@
       '&page=eq.' + encodeURIComponent(cfg.page) +
       '&key=eq.' + encodeURIComponent((key === undefined || key === null) ? cfg.key : key) +
       ((ix === undefined || ix === null) ? '' : '&ix=eq.' + encodeURIComponent(ix));
+    /* 读操作：把 key 放进 URL 参数，而不是塞进请求头。
+     * 为什么：带自定义头（apikey/Authorization）的跨域请求会先发一次 OPTIONS 预检，
+     * 实测里这次预检偶发地让凭据没能送达服务端 → 客人看到 401、读不到照片。
+     * 放进 URL 参数后属于「简单请求」，浏览器不发预检，既稳又快（微信里尤其明显）。
+     * key 本身是可公开的前端凭据，放在 URL 里和放在头里安全性一样。
+     */
+    const sbKeyParam = (u) => (String(u).indexOf('?') >= 0 ? '&' : '?') +
+      'apikey=' + encodeURIComponent(cfg.anonKey);
     async function sbRows(path) {
-      const r = await fetch(sbBase() + path, { headers: sbHead(), cache: 'no-store' });
+      const r = await fetch(sbBase() + path + sbKeyParam(path), { cache: 'no-store' });
       if (!r.ok) return [];                       // 表不存在 / 权限没开都会在这里体现
       try { const j = await r.json(); return Array.isArray(j) ? j : (j ? [j] : []); }
       catch (e) { return []; }
@@ -1010,7 +1018,9 @@
           const body = JSON.stringify(row && row.id != null
             ? { url: url, rev: rev, updated_at: new Date().toISOString() }
             : { page: cfg.page, key: s.key, ix: s.ix, url: url, rev: rev, created_at: new Date().toISOString() });
-          const r = await fetch(sbBase() + ((row && row.id != null) ? ('?id=eq.' + encodeURIComponent(row.id)) : ''), {
+          let wUrl = sbBase() + ((row && row.id != null) ? ('?id=eq.' + encodeURIComponent(row.id)) : '');
+          wUrl += sbKeyParam(wUrl);
+          const r = await fetch(wUrl, {
             method: (row && row.id != null) ? 'PATCH' : 'POST',
             headers: sbHead({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
             body: body
@@ -1072,7 +1082,7 @@
       if (mode === 'sb') {
         return withTimeout(sbRows(sbSel('id', s.key, s.ix)), 8000)
           .then(rows => Promise.all(rows.map(row => (row && row.id != null)
-            ? fetch(sbBase() + '?id=eq.' + encodeURIComponent(row.id),
+            ? fetch(sbBase() + '?id=eq.' + encodeURIComponent(row.id) + '&apikey=' + encodeURIComponent(cfg.anonKey),
                 { method: 'DELETE', headers: sbHead() }).catch(() => {})
             : null)))
           .catch(() => {});
