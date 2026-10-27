@@ -1,0 +1,56 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>ghorigin probe</title></head>
+<body><pre id="out">running...</pre>
+<script src="js/cloud-sdk.js?v=1"></script>
+<script>
+const out = document.getElementById('out');
+const L = [];
+const say = m => { L.push(m); out.textContent = L.join('\n'); };
+const TINY = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+const KEY = 'wbpk_p7SWMhcRww37VUgFTI1xc3_w81WiVKdg0hMWogQoB8WcX5Ki3Pc7tVG';
+const EP  = 'https://emerald-tablet-tarot.app.workbuddy.host';
+
+say('origin = ' + location.origin);
+window.addEventListener('error', e => say('WINERR ' + e.message));
+
+(async () => {
+  try {
+    say('SDK=' + (typeof window.WorkBuddyCloud));
+    const g = window.WorkBuddyCloud;
+    const c = g.createWorkBuddyCloud({
+      endpoint: EP,
+      oauthRelayBaseUrl: 'https://www.workbuddy.cn/v2/as/genie-baas/oauth',
+      publishableKey: KEY
+    });
+    say('client ok');
+
+    // 1) READ
+    try {
+      const r = await c.database.from('cuiyu_slots').select('key,ix,rev')
+        .eq('page','cuiyulu').eq('key','cup').eq('ix',0);
+      say('READ ' + (r.error ? 'ERR ' + JSON.stringify(r.error) : 'OK rows=' + (r.data||[]).length));
+    } catch (e) { say('READ THROW ' + (e && (e.status||'') + ' | ' + e.message || e)); }
+
+    // 2) WRITE (rpc + passcode)
+    try {
+      const w = await c.database.rpc('cuiyu_set_slot', {
+        p_passcode:'520', p_page:'cuiyulu', p_key:'cup', p_ix:0,
+        p_url: TINY, p_rev: 'ghprobe-' + Date.now()
+      });
+      say('WRITE ' + (w.error ? 'ERR ' + JSON.stringify(w.error) : 'OK'));
+    } catch (e) { say('WRITE THROW ' + (e && (e.status||'') + ' | ' + e.message || e)); }
+
+    // 3) 实际发出的网络请求（看被谁拦了）
+    setTimeout(() => {
+      try {
+        const rs = performance.getEntriesByType('resource')
+          .filter(x => x.name.indexOf('workbuddy') >= 0 || x.name.indexOf('tencentbuddy') >= 0);
+        say('NET ' + rs.length);
+        rs.slice(0, 12).forEach(x => say('  ' + x.name.replace(location.origin,'') + '  [size=' + (x.transferSize===undefined?'?':x.transferSize) + ']'));
+      } catch (e) { say('NET ERR ' + e); }
+      say('DONE');
+    }, 1500);
+  } catch (e) { say('FATAL ' + (e && e.message || e)); say('DONE'); }
+})();
+</script>
+</body></html>
