@@ -6,7 +6,10 @@
 <title>风格 · 陪玩自我介绍</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Long+Cang&family=Zhi+Mang+Xing&display=swap" rel="stylesheet" />
+<!-- 非阻塞加载：fonts.googleapis.com 在大陆网络常挂起，阻塞式样式表会让页面长时间黑屏。
+     media=print + onload 切换 = 异步加载，字体没到就用回退字体先渲染（font-display=swap 已开）。 -->
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Long+Cang&family=Zhi+Mang+Xing&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+<noscript><link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Long+Cang&family=Zhi+Mang+Xing&display=swap" rel="stylesheet" /></noscript>
 <style>
   :root{
     --bg:#ffffff;          /* 纯白底 */
@@ -1079,7 +1082,25 @@
 </div>
 
 <script src="assets/gsap.min.js"></script>
-<script>if(!window.gsap){document.write('<scr'+'ipt src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"><\/scr'+'ipt>');}</script>
+<!-- 不再用 cdnjs 兜底：cdnjs.cloudflare.com 在大陆网络（尤其微信内置浏览器）经常挂起，
+     document.write 的外链脚本会卡死整个页面解析器，主脚本永远不执行（黑屏只剩 CSS 框）。
+     本地 gsap 加载失败时 G=null，全站自动降级为静态模式，页面照常可看可点。 -->
+<script>
+/* 保底启动：主脚本万一没跑起来（极端网络/内核问题），点开始也能看到静态主页，不会黑死 */
+(function(){
+  var s = document.getElementById('startScr');
+  if(!s) return;
+  s.addEventListener('click', function(){
+    if(window.__peibanBooted || window.__pfStarted) return;   /* 主脚本正常时全部交给主脚本 */
+    window.__pfStarted = true;
+    s.style.display = 'none';
+    var i = document.getElementById('intro'); if(i) i.style.display = 'none';
+    var h = document.getElementById('page-home');
+    if(h){ h.style.visibility = 'visible'; h.style.opacity = '1'; }
+    var b = document.getElementById('bgm'); if(b){ var p = b.play(); if(p && p.catch) p.catch(function(){}); }
+  });
+})();
+</script>
 <script>
 (function(){
   var G = window.gsap || null;
