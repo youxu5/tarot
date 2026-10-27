@@ -761,104 +761,148 @@
     up.style.top = y + 'px';
   }
 
-  /* ---------- 云端同步：Supabase REST（纯 fetch，不引 SDK；连不上就降级本机） ----------
+  /* ---------- 云端同步：WorkBuddy 云服务（database 表 slot_images 存图片 data URL） ----------
    * 目的：老板上传的照片传到云端，所有访客刷新就能看到最新那张。
-   * 任何一步失败都自动退回本机模式，不报错、不白屏。
-   */
-  /* ---------- 云端槽位（WorkBuddy 云服务） ----------
-   * 对外接口不变：init / ready / load / loadAll / save / remove
-   * 读：公开读（访客无需登录）；写：走云端函数，服务端再校验一次口令。
-   * 任何一步失败都返回 null / 抛错，由调用方降级到本机，页面永不白屏。
+   * 对外接口不变：init / ready / load / loadAll / save / remove。
+   * 任何一步失败都自动退回本机/静态图，不报错、不白屏。
    */
   const Cloud = (() => {
-    let cfg = null, cloud = null, on = false;
+    const SDK_CDN = 'https://cdn.jsdelivr.net/npm/@tencent-ai/workbuddy-cloud-sdk@dev/lib/index.global.js';
+    const SDK_LOCAL = 'js/cloud-sdk.js';
+    const TABLE = 'slot_images';
+    const STEPS = [[1100, .75], [900, .66], [720, .58], [560, .5]];  // 逐级压小，直到塞得进数据库
+    const MAXLEN = 520000;                                           // data URL 字符上限（约 390KB）
+    let cfg = null, on = false, cloud = null, sdkP = null;
 
     function init(c) {
-      try {
-        cfg = c || null;
-        const G = (typeof window !== 'undefined') ? window.WorkBuddyCloud : null;
-        on = !!(cfg && cfg.endpoint && cfg.publishableKey && G && G.createWorkBuddyCloud);
-        if (on) {
-          cloud = G.createWorkBuddyCloud({
-            endpoint: cfg.endpoint,
-            oauthRelayBaseUrl: cfg.oauthRelayBaseUrl,
-            publishableKey: cfg.publishableKey
-          });
-        }
-      } catch (e) { on = false; cloud = null; }
+      try { cfg = c || null; on = !!(cfg && cfg.endpoint && cfg.publishableKey && cfg.page); }
+      catch (e) { on = false; }
     }
+    function ready() { return on; }
 
-    function ready() { return on && !!cloud; }
-
-    function slotOf(s) {
-      return {
-        page: (cfg && cfg.page) || 'cuiyulu',
-        key: (s && s.key) || (cfg && cfg.key) || 'cup',
-        ix: Number((s && s.ix) || 0)
-      };
-    }
-
-    function toDataUrl(p) {                       // 存进数据库的是 dataURL 字符串
-      if (typeof p === 'string') return Promise.resolve(p);
+    function loadScript(src) {
       return new Promise((res, rej) => {
-        const fr = new FileReader();
-        fr.onload = () => res(String(fr.result || ''));
-        fr.onerror = () => rej(new Error('图片读取失败'));
-        fr.readAsDataURL(p);
+        const s = document.createElement('script');
+        s.src = src; s.async = true;
+        s.onload = () => res(true);
+        s.onerror = () => rej(new Error('SDK 加载失败: ' + src));
+        document.head.appendChild(s);
+      });
+    }
+    function ensureSDK() {                 // CDN 优先，CDN 挂了退回站点自带的同版本副本
+      if (typeof window !== 'undefined' && window.WorkBuddyCloud) return Promise.resolve(window.WorkBuddyCloud);
+      if (sdkP) return sdkP;
+      sdkP = loadScript(SDK_CDN)
+        .catch(() => loadScript(SDK_LOCAL))
+        .then(() => {
+          const g = (typeof window !== 'undefined') ? window.WorkBuddyCloud : null;
+          if (!g) throw new Error('SDK 未挂载全局变量');
+          return g;
+        })
+        .catch(e => { sdkP = null; throw e; });
+      return sdkP;
+    }
+    function client() {                    // endpoint / publishableKey 全部来自 config.js（= activate 返回的 publicConfig）
+      if (cloud) return Promise.resolve(cloud);
+      if (!on) return Promise.reject(new Error('云端未配置'));
+      return ensureSDK().then(g => {
+        cloud = g.createWorkBuddyCloud({
+          endpoint: cfg.endpoint,
+          oauthRelayBaseUrl: cfg.oauthRelayBaseUrl,
+          publishableKey: cfg.publishableKey
+        });
+        return cloud;
+      });
+    }
+    function withTimeout(p, ms) {
+      return new Promise((res, rej) => {
+        const t = setTimeout(() => rej(new Error('请求超时')), ms || 8000);
+        Promise.resolve(p).then(v => { clearTimeout(t); res(v); }, e => { clearTimeout(t); rej(e); });
       });
     }
 
+    const D = () => ({ page: cfg.page, key: cfg.key, ix: cfg.ix });
+    const pick = (rows) => (rows && rows[0]) || null;
+
     async function load(slot) {
-      if (!ready()) return null;
-      const s = slotOf(slot);
+      if (!on) return null;
+      const s = slot || D();
       try {
-        const r = await cloud.database.from('cuiyu_slots')
+        const c = await client();
+        const r = await withTimeout(c.database.from(TABLE)
           .select('url,rev')
-          .eq('page', s.page).eq('key', s.key).eq('ix', s.ix)
-          .maybeSingle();
-        if (r.error || !r.data || !r.data.url) return null;
-        return { url: r.data.url, rev: r.data.rev || 0 };
+          .eq('page', s.page).eq('slot', s.key).eq('ix', s.ix), 8000);
+        const row = (r && !r.error) ? pick(r.data) : null;
+        if (!row || !row.rev || !row.url) return null;
+        return { url: row.url, rev: row.rev };
       } catch (e) { return null; }
     }
 
+    /* 拉某一类槽位的全部格子（如画廊 gal → { 0:{url,rev}, 1:{...} … }） */
     async function loadAll(key) {
-      if (!ready()) return null;
-      const k = key || (cfg && cfg.key) || 'cup';
+      if (!on) return null;
       try {
-        const r = await cloud.database.from('cuiyu_slots')
+        const c = await client();
+        const r = await withTimeout(c.database.from(TABLE)
           .select('ix,url,rev')
-          .eq('page', (cfg && cfg.page) || 'cuiyulu').eq('key', k);
-        if (r.error || !r.data) return null;
+          .eq('page', cfg.page).eq('slot', key), 9000);
+        if (!r || r.error) return null;
         const map = {};
-        (r.data || []).forEach(row => { if (row.url) map[row.ix] = { url: row.url, rev: row.rev || 0 }; });
+        (r.data || []).forEach(row => {
+          if (row && row.rev && row.url) map[row.ix] = { url: row.url, rev: row.rev };
+        });
         return map;
       } catch (e) { return null; }
     }
 
-    async function save(payload, slot) {
-      if (!ready()) throw new Error('云端未就绪');
-      const s = slotOf(slot);
-      const url = await toDataUrl(payload);
-      if (url.length > 1800000) throw new Error('图片太大（压缩后仍超 1.3MB），换一张小一点的');
-      const rev = Date.now();
-      const r = await cloud.database.rpc('cuiyu_set_slot', {
-        p_passcode: (cfg && cfg.passcode) || '520',
-        p_page: s.page, p_key: s.key, p_ix: s.ix,
-        p_url: url, p_rev: rev
+    /* blob → 受限大小的 jpeg data URL（直接存进数据库，任何访客都能读） */
+    function blobToDataUrl(blob, step) {
+      const i = step || 0;
+      const spec = STEPS[Math.min(i, STEPS.length - 1)];
+      return new Promise((res, rej) => {
+        const objUrl = URL.createObjectURL(blob);
+        const im = new Image();
+        im.onload = () => {
+          const sc = Math.min(1, spec[0] / Math.max(im.width, im.height));
+          const cv = document.createElement('canvas');
+          cv.width = Math.max(1, Math.round(im.width * sc));
+          cv.height = Math.max(1, Math.round(im.height * sc));
+          cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
+          let out = '';
+          try { out = cv.toDataURL('image/jpeg', spec[1]); } catch (e) {}
+          URL.revokeObjectURL(objUrl);
+          if (!out) return rej(new Error('图片编码失败'));
+          if (out.length > MAXLEN && i < STEPS.length - 1) return res(blobToDataUrl(blob, i + 1));
+          res(out);
+        };
+        im.onerror = () => { URL.revokeObjectURL(objUrl); rej(new Error('图片解码失败')); };
+        im.src = objUrl;
       });
-      if (r.error) throw new Error(r.error.message || '云端写入失败');
-      return { url: url, rev: rev };
     }
 
-    async function remove(slot) {
-      if (!ready()) return;
-      const s = slotOf(slot);
-      try {
-        await cloud.database.rpc('cuiyu_del_slot', {
-          p_passcode: (cfg && cfg.passcode) || '520',
-          p_page: s.page, p_key: s.key, p_ix: s.ix
-        });
-      } catch (e) { /* 删不掉也不影响本机清除 */ }
+    async function save(blob, slot) {
+      if (!on) throw new Error('云端未配置');
+      const s = slot || D();
+      const url = await blobToDataUrl(blob);
+      const rev = Date.now();
+      const c = await client();
+      const row = { page: s.page, slot: s.key, ix: s.ix, url: url, rev: rev };
+      const r = await withTimeout(c.database.from(TABLE)
+        .upsert(row, { onConflict: 'page,slot,ix' })
+        .select('url,rev'), 20000);
+      if (r && r.error) throw new Error(r.error.message || '云端写入失败');
+      const got = (r && r.data && r.data[0]) || row;
+      return { url: got.url, rev: got.rev };
+    }
+
+    function remove(slot) {               // 删云端：失败就算了，不影响本机清除
+      if (!on) return Promise.resolve();
+      const s = slot || D();
+      return client()
+        .then(c => withTimeout(c.database.from(TABLE)
+          .delete()
+          .eq('page', s.page).eq('slot', s.key).eq('ix', s.ix), 8000))
+        .catch(() => {});
     }
 
     return { init, ready, load, loadAll, save, remove };
