@@ -2757,3 +2757,57 @@ body.scroll-page .music-bird { bottom: 24%; }
   right: 19px;
   top: 19px;
 }
+
+/* ================= 同步状态提示（默认不露，仅同步成功/失败时闪一下） ================= */
+.cup-upload .cu-status {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6px;
+  text-align: center;
+  font-size: 10px;
+  letter-spacing: .08em;
+  color: rgba(206, 198, 232, .8);
+  text-shadow: 0 1px 5px rgba(0, 0, 0, .65);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity .35s ease, transform .35s ease;
+  pointer-events: none;
+  z-index: 3;
+}
+.cup-upload.show-status .cu-status { opacity: 1; transform: translateY(0); }
+
+/* ================= 画廊：老板编辑态（✕ 角标仅解锁后显示）+ 上传中呼吸 ================= */
+.chapter-gallery .gbox .gx {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  color: #f2ecff;
+  font-size: 12px;
+  line-height: 1;
+  background: rgba(24, 16, 40, .78);
+  border: 1px solid rgba(190, 160, 240, .5);
+  border-radius: 50%;
+  z-index: 4;
+  pointer-events: auto;
+}
+.chapter-gallery.unlocked .gbox .gx { display: flex; }
+.chapter-gallery.unlocked .gbox { cursor: pointer; }
+.chapter-gallery .gbox.uploading::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(190, 160, 240, .18);
+  animation: galUp 1.1s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 3;
+}
+@keyframes galUp {
+  0%, 100% { opacity: .25; }
+  50% { opacity: .8; }
+}

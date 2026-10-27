@@ -6,6 +6,21 @@
 
 const CONFIG = {
 
+  /* ---------- 云端同步（Supabase） ----------
+   * 用途：老板上传的照片不再只存他自己的手机，
+   * 而是传到云端，任何访客刷新都能看到最新那张。
+   * 网络不畅时会自动退回本机模式，照片不会白屏、不会丢。
+   * 不想用就把 url 清空即可（页面立刻回到本机模式）。
+   */
+  supabase: {
+    url: 'https://udbtfhwmtlylkcolxmhf.supabase.co',
+    anonKey: 'sb_publishable_F0nSwoHFgsPRMh4n8HCBVg__M8lgts1',
+    bucket: 'slot-imgs',
+    page: 'cuiyulu',   // 站点标识，避免和其他项目抢同一个槽位
+    key: 'cup',        // 槽位名（圣杯页照片）
+    ix: 0
+  },
+
   /* ---------- 第一页：首页 ---------- */
   home: {
     // 卡牌柔光多边形的四个角点 —— 【注意：现在填的是照片原图里的像素坐标】

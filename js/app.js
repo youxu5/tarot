@@ -746,7 +746,127 @@
     up.style.top = y + 'px';
   }
 
-  /* ---------- 圣杯页：老板专属上传画布（口令解锁，存在本机浏览器里） ---------- */
+  /* ---------- 云端同步：Supabase REST（纯 fetch，不引 SDK；连不上就降级本机） ----------
+   * 目的：老板上传的照片传到云端，所有访客刷新就能看到最新那张。
+   * 任何一步失败都自动退回本机模式，不报错、不白屏。
+   */
+  const Cloud = (() => {
+    let cfg = null, on = false;
+    function init(c) {
+      try { cfg = c || null; on = !!(cfg && cfg.url && cfg.anonKey && cfg.bucket); }
+      catch (e) { on = false; }
+    }
+    function ready() { return on; }
+    function hdr(extra) {
+      const h = { apikey: cfg.anonKey, Authorization: 'Bearer ' + cfg.anonKey };
+      if (extra) for (const k in extra) h[k] = extra[k];
+      return h;
+    }
+    async function go(url, opt, ms) {
+      const ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+      let tm = null;
+      if (ctl) tm = setTimeout(() => { try { ctl.abort(); } catch (e) {} }, ms || 6000);
+      try {
+        const o = Object.assign({}, opt || {});
+        if (ctl) o.signal = ctl.signal;
+        return await fetch(url, o);
+      } finally { if (tm) clearTimeout(tm); }
+    }
+    const D = () => ({ page: cfg.page, key: cfg.key, ix: cfg.ix });
+    const file = (s) => s.page + '-' + s.key + '-' + s.ix + '.jpg';
+    const pub = (s, rev) => cfg.url + '/storage/v1/object/public/' + cfg.bucket + '/' + file(s) + '?v=' + (rev || 0);
+
+    async function load(slot) {
+      if (!on) return null;
+      const s = slot || D();
+      try {
+        const q = cfg.url + '/rest/v1/slot_images?select=url,rev&page=eq.' + encodeURIComponent(s.page)
+          + '&key=eq.' + encodeURIComponent(s.key) + '&ix=eq.' + s.ix;
+        const r = await go(q, { headers: hdr() }, 5000);
+        if (!r.ok) return null;
+        const j = await r.json();
+        if (!j || !j.length || !j[0].rev) return null;
+        return { url: pub(s, j[0].rev), rev: j[0].rev };
+      } catch (e) { return null; }
+    }
+
+    /* 拉某一类槽位的全部格子（如画廊 gal → { 0:{url,rev}, 1:{...} … }） */
+    async function loadAll(key) {
+      if (!on) return null;
+      try {
+        const q = cfg.url + '/rest/v1/slot_images?select=ix,url,rev&page=eq.' + encodeURIComponent(cfg.page)
+          + '&key=eq.' + encodeURIComponent(key);
+        const r = await go(q, { headers: hdr() }, 6000);
+        if (!r.ok) return null;
+        const j = await r.json();
+        const map = {};
+        (j || []).forEach(row => {
+          if (row.rev) map[row.ix] = { url: pub({ page: cfg.page, key: key, ix: row.ix }, row.rev), rev: row.rev };
+        });
+        return map;
+      } catch (e) { return null; }
+    }
+
+    async function save(blob, slot) {
+      if (!on) throw new Error('no cloud');
+      const s = slot || D();
+      const rev = Date.now();
+      const putOpt = {
+        method: 'PUT',
+        headers: hdr({ 'Content-Type': 'image/jpeg', 'x-upsert': 'true', 'cache-control': '3600' }),
+        body: blob
+      };
+      let up = await go(cfg.url + '/storage/v1/object/' + cfg.bucket + '/' + file(s), putOpt, 20000);
+      if (!up.ok) {                       // 部分版本首次写入只认 POST
+        up = await go(cfg.url + '/storage/v1/object/' + cfg.bucket + '/' + file(s),
+          Object.assign({}, putOpt, { method: 'POST' }), 20000);
+      }
+      if (!up.ok) throw new Error('storage ' + up.status);
+      const row = await go(cfg.url + '/rest/v1/slot_images', {
+        method: 'POST',
+        headers: hdr({ 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' }),
+        body: JSON.stringify({ page: s.page, key: s.key, ix: s.ix, url: pub(s, rev), rev: rev })
+      }, 8000);
+      if (!row.ok) throw new Error('db ' + row.status);
+      return { url: pub(s, rev), rev: rev };
+    }
+
+    function remove(slot) {               // 删云端：失败就算了，不影响本机清除
+      if (!on) return Promise.resolve();
+      const s = slot || D();
+      return Promise.all([
+        go(cfg.url + '/storage/v1/object/' + cfg.bucket + '/' + file(s), { method: 'DELETE', headers: hdr() }, 8000).catch(() => {}),
+        go(cfg.url + '/rest/v1/slot_images?page=eq.' + encodeURIComponent(s.page)
+          + '&key=eq.' + encodeURIComponent(s.key) + '&ix=eq.' + s.ix,
+          { method: 'DELETE', headers: hdr() }, 8000).catch(() => {})
+      ]);
+    }
+    return { init, ready, load, loadAll, save, remove };
+  })();
+
+  /* 选图 → 压成限定边长的 jpeg（画廊/圣杯页共用） */
+  function compressToJpeg(fileObj, max) {
+    return new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => {
+        const im = new Image();
+        im.onload = () => {
+          const s = Math.min(1, max / Math.max(im.width, im.height));
+          const c = document.createElement('canvas');
+          c.width = Math.max(1, Math.round(im.width * s));
+          c.height = Math.max(1, Math.round(im.height * s));
+          c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+          c.toBlob(b => b ? resolve({ blob: b, dataUrl: c.toDataURL('image/jpeg', .85) }) : reject(new Error('toBlob 失败')), 'image/jpeg', .85);
+        };
+        im.onerror = () => reject(new Error('图片读取失败'));
+        im.src = String(fr.result || '');
+      };
+      fr.onerror = () => reject(new Error('文件读取失败'));
+      fr.readAsDataURL(fileObj);
+    });
+  }
+
+  /* ---------- 圣杯页：老板专属上传画布（口令解锁；云端优先，本机兜底） ---------- */
   const CU_KEY = 'cuiyu_cup_upload_img';
   const CU_UNLOCK = 'cuiyu_cup_upload_unlocked';
   function setupCupUpload(stage, king) {
@@ -763,8 +883,35 @@
     try { unlocked = localStorage.getItem(CU_UNLOCK) === '1'; } catch (e) {}
     let saved = '';
     try { saved = localStorage.getItem(CU_KEY) || ''; } catch (e) {}
-    if (!saved && king.cupCloudPhoto) saved = king.cupCloudPhoto;   // 没有本地上传图就用云端照片
+    if (!saved && king.cupCloudPhoto) saved = king.cupCloudPhoto;   // 没有本地上传图就用静态云端照片
     if (saved) { img.src = saved; box.classList.add('has-img'); }
+
+    // 状态提示：平时完全不露出来，只在真同步/真失败时闪一下
+    const setStatus = (t, ms) => {
+      const el = box.querySelector('.cu-status');
+      if (!el) return;
+      el.textContent = t;
+      box.classList.add('show-status');
+      clearTimeout(setStatus._t);
+      if (ms) setStatus._t = setTimeout(() => box.classList.remove('show-status'), ms);
+    };
+
+    // 云端优先：拉到就用云端那张，保证所有人看到的是同一张
+    Cloud.init((typeof CONFIG !== 'undefined' && CONFIG.supabase) || null);
+    if (Cloud.ready()) {
+      setStatus('正在同步…');
+      Cloud.load().then(hit => {
+        if (hit && hit.url) {
+          img.src = hit.url;
+          box.classList.add('has-img');
+          setStatus('已同步 ✓', 2600);
+          relayout();
+        } else {
+          setStatus('离线模式 · 照片只在本机', 2600);
+        }
+      });
+    }
+    // 没配云端就纯本机模式，不提示、不报错
 
     // 照片翻入动画结束后重排（两次覆盖视频/SVG 两种时长），换窗口尺寸也重排
     const relayout = () => layoutCupTail(stage);
@@ -842,6 +989,15 @@
           try { localStorage.setItem(CU_KEY, d); } catch (e) {}
           img.src = d;
           box.classList.add('has-img');
+          relayout();
+          // 传云端：成功后所有人刷新都能看到这一张
+          if (Cloud.ready()) {
+            setStatus('上传中…');
+            new Promise(r => { try { c.toBlob(r, 'image/jpeg', .82); } catch (e) { r(null); } })
+              .then(blob => blob ? Cloud.save(blob) : Promise.reject(new Error('blob 失败')))
+              .then(hit => { img.src = hit.url; setStatus('已同步到云端 ✓', 2600); })
+              .catch(err => { console.warn('[云端上传失败]', err); setStatus('云端没连上 · 已存本机', 3200); });
+          }
         };
         im.onerror = () => {
           const d = String(fr.result || '');
@@ -860,6 +1016,7 @@
       try { localStorage.removeItem(CU_KEY); } catch (err) {}
       img.removeAttribute('src');
       box.classList.remove('has-img');
+      if (Cloud.ready()) { setStatus('正在移除…'); Cloud.remove().then(() => setStatus('本机模式')); }
     });
   }
   $('#cups-stage').addEventListener('click', () => {
@@ -925,9 +1082,10 @@
     // 画廊方框：图片和尺寸都由 config.js → chapter.gallery 决定
     const gal = $('#chapter-gallery');
     gal.innerHTML = '';
-    (CONFIG.chapter.gallery || []).forEach((item) => {
+    (CONFIG.chapter.gallery || []).forEach((item, ix) => {
       const box = document.createElement('div');
       box.className = 'gbox' + (item.span ? ' ' + item.span : '') + (item.fit === 'contain' ? ' fit-contain' : '');
+      box.dataset.ix = ix;                        // 云端槽位号：cuiyulu-gal-<ix>
       // 底图：照片没铺满框时露出的背景（比如 ins 风紫纹理）
       if (item.bg) box.style.background = 'center / cover no-repeat url("' + item.bg + '?v=2")';
       if (item.src) {
@@ -939,7 +1097,112 @@
       } else {
         box.classList.add('empty');
       }
+      const x = document.createElement('div');    // 移除角标：仅解锁编辑后显示
+      x.className = 'gx';
+      x.textContent = '✕';
+      box.appendChild(x);
       gal.appendChild(box);
+    });
+    setupGalleryUpload();
+  }
+
+  /* ---------- 画廊：老板自定义 + 云端同步 ----------
+   * 入口与圣杯页一致：1.2 秒内连点格子 5 次 → 口令 520 → 解锁全站编辑。
+   * 解锁后：点格子换图（自动压缩、传云端）；点右上 ✕ 移除（连云端一起删）。
+   * 云端有图时覆盖 config 里的静态图；云端不通则只在本机生效，不报错。
+   */
+  function galleryPasscode() {
+    const ks = (CONFIG.reveal && CONFIG.reveal.kings) || [];
+    for (const k of ks) { if (k.uploadPasscode) return String(k.uploadPasscode); }
+    return '520';
+  }
+  function galleryUnlocked() {
+    try { return localStorage.getItem(CU_UNLOCK) === '1'; } catch (e) { return false; }
+  }
+  function setBoxImg(box, url) {
+    let img = box.querySelector('img');
+    if (!img) { img = document.createElement('img'); img.alt = ''; img.loading = 'lazy'; box.appendChild(img); }
+    img.src = url;
+    box.classList.remove('empty');
+    box.classList.add('has-img');
+  }
+  function setupGalleryUpload() {
+    const gal = $('#chapter-gallery');
+    if (!gal) return;
+    Cloud.init((typeof CONFIG !== 'undefined' && CONFIG.supabase) || null);
+
+    // 开页拉云端：谁的槽位有图就铺谁的（覆盖静态配置图）
+    if (Cloud.ready()) {
+      Cloud.loadAll('gal').then(map => {
+        if (!map) return;
+        gal.querySelectorAll('.gbox[data-ix]').forEach(box => {
+          const hit = map[Number(box.dataset.ix)];
+          if (hit && hit.url) setBoxImg(box, hit.url);
+        });
+      });
+    }
+
+    // 解锁状态先恢复一次（刷新后仍生效）
+    if (galleryUnlocked()) gal.classList.add('unlocked');
+
+    // 隐藏的文件选择器（全画廊共用一个）
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.style.display = 'none';
+    document.body.appendChild(input);
+    let pendingBox = null;
+    input.addEventListener('change', () => {
+      const f = input.files && input.files[0];
+      input.value = '';
+      const box = pendingBox;
+      pendingBox = null;
+      if (!f || !box) return;
+      compressToJpeg(f, 1100).then(r => {
+        setBoxImg(box, URL.createObjectURL(r.blob));
+        const sb = (typeof CONFIG !== 'undefined' && CONFIG.supabase) || {};
+        const slot = { page: sb.page, key: 'gal', ix: Number(box.dataset.ix) };
+        if (!Cloud.ready()) return;
+        box.classList.add('uploading');
+        Cloud.save(r.blob, slot)
+          .then(hit => setBoxImg(box, hit.url))
+          .catch(err => console.warn('[画廊上传失败]', err))
+          .finally(() => box.classList.remove('uploading'));
+      }).catch(err => console.warn('[画廊压缩失败]', err));
+    });
+
+    let taps = 0, tapTimer = 0;
+    gal.addEventListener('click', (e) => {
+      const box = e.target.closest('.gbox');
+      if (!box) return;
+      // ✕ 角标：删除（仅解锁态显示，天然不会在未解锁时点到）
+      if (e.target.classList.contains('gx')) {
+        e.stopPropagation();
+        const sb = (typeof CONFIG !== 'undefined' && CONFIG.supabase) || {};
+        const slot = { page: sb.page, key: 'gal', ix: Number(box.dataset.ix) };
+        const img = box.querySelector('img');
+        if (img) img.removeAttribute('src');
+        box.classList.add('empty');
+        box.classList.remove('has-img');
+        if (Cloud.ready()) Cloud.remove(slot);
+        return;
+      }
+      if (!galleryUnlocked()) {
+        taps++;
+        clearTimeout(tapTimer);
+        tapTimer = setTimeout(() => { taps = 0; }, 1200);
+        if (taps >= 5) {
+          taps = 0;
+          const code = (typeof prompt === 'function') ? prompt('请输入编辑口令') : null;
+          if (code != null && String(code).trim() === galleryPasscode()) {
+            try { localStorage.setItem(CU_UNLOCK, '1'); } catch (err) {}
+            gal.classList.add('unlocked');
+          }
+        }
+        return;
+      }
+      pendingBox = box;
+      input.click();
     });
   }
 
