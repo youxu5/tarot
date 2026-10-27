@@ -208,6 +208,7 @@
   function toggleCard(el, card) {
     const flipping = !el.classList.contains('flipped');
     el.classList.toggle('flipped');
+    if (!flipping) el.classList.remove('arming');   // 翻回去就撤掉"正在开启"的呼吸光
 
     // 点到指定牌（默认权杖国王）：翻面后停留一段时间，自动跳转
     clearTimeout(kingJumpTimer);
@@ -223,7 +224,11 @@
           startCupsScene(king);
         }, CONFIG.reveal.flipMs + (king.cupDelayMs != null ? king.cupDelayMs : 900));
       } else if (flipping && king && king.target) {
+        // 跳转要等 翻牌0.9s + 停留3s ≈ 3.9 秒，这段静默期必须给个回应，
+        // 否则"点了没反应"会被当成卡死，用户会连点，反而把牌翻回去
+        el.classList.add('arming');
         kingJumpTimer = setTimeout(() => {
+          el.classList.remove('arming');
           showPage(king.target);
         }, CONFIG.reveal.flipMs + (CONFIG.reveal.kingStayMs || 3000));
       }
@@ -768,8 +773,8 @@
    */
   const Cloud = (() => {
     const SDK_CDN = 'https://cdn.jsdelivr.net/npm/@tencent-ai/workbuddy-cloud-sdk@dev/lib/index.global.js';
-    const SDK_LOCAL = 'js/cloud-sdk.js';
-    const TABLE = 'slot_images';
+    const SDK_LOCAL = 'js/cloud-sdk.js?v=1';
+    const TABLE = 'cuiyu_slots';   // 云端实际表名（曾误写成 slot_images，导致读写打在空表上）
     const STEPS = [[1100, .75], [900, .66], [720, .58], [560, .5]];  // 逐级压小，直到塞得进数据库
     const MAXLEN = 520000;                                           // data URL 字符上限（约 390KB）
     let cfg = null, on = false, cloud = null, sdkP = null;
@@ -789,11 +794,11 @@
         document.head.appendChild(s);
       });
     }
-    function ensureSDK() {                 // CDN 优先，CDN 挂了退回站点自带的同版本副本
+    function ensureSDK() {                 // 站点自带副本优先，它挂了才去撞 CDN（国内对 jsdelivr 时通时断）
       if (typeof window !== 'undefined' && window.WorkBuddyCloud) return Promise.resolve(window.WorkBuddyCloud);
       if (sdkP) return sdkP;
-      sdkP = loadScript(SDK_CDN)
-        .catch(() => loadScript(SDK_LOCAL))
+      sdkP = loadScript(SDK_LOCAL)
+        .catch(() => loadScript(SDK_CDN))
         .then(() => {
           const g = (typeof window !== 'undefined') ? window.WorkBuddyCloud : null;
           if (!g) throw new Error('SDK 未挂载全局变量');
@@ -831,7 +836,7 @@
         const c = await client();
         const r = await withTimeout(c.database.from(TABLE)
           .select('url,rev')
-          .eq('page', s.page).eq('slot', s.key).eq('ix', s.ix), 8000);
+          .eq('page', s.page).eq('key', s.key).eq('ix', s.ix), 8000);
         const row = (r && !r.error) ? pick(r.data) : null;
         if (!row || !row.rev || !row.url) return null;
         return { url: row.url, rev: row.rev };
@@ -845,7 +850,7 @@
         const c = await client();
         const r = await withTimeout(c.database.from(TABLE)
           .select('ix,url,rev')
-          .eq('page', cfg.page).eq('slot', key), 9000);
+          .eq('page', cfg.page).eq('key', key), 9000);
         if (!r || r.error) return null;
         const map = {};
         (r.data || []).forEach(row => {
@@ -886,22 +891,25 @@
       const url = await blobToDataUrl(blob);
       const rev = Date.now();
       const c = await client();
-      const row = { page: s.page, slot: s.key, ix: s.ix, url: url, rev: rev };
-      const r = await withTimeout(c.database.from(TABLE)
-        .upsert(row, { onConflict: 'page,slot,ix' })
-        .select('url,rev'), 20000);
-      if (r && r.error) throw new Error(r.error.message || '云端写入失败');
-      const got = (r && r.data && r.data[0]) || row;
-      return { url: got.url, rev: got.rev };
+      // 不能直接 upsert 表：那张表只对访客开放读，硬写会被 RLS 挡回来。
+      // 走 SECURITY DEFINER 函数，由服务端再校验一次口令。
+      const r = await withTimeout(c.database.rpc('cuiyu_set_slot', {
+        p_passcode: cfg.passcode || '',
+        p_page: s.page, p_key: s.key, p_ix: s.ix,
+        p_url: url, p_rev: rev
+      }), 20000);
+      if (r && r.error) throw new Error(r.error.message || '云端写入失败（口令不对或网络不通）');
+      return { url: url, rev: rev };
     }
 
     function remove(slot) {               // 删云端：失败就算了，不影响本机清除
       if (!on) return Promise.resolve();
       const s = slot || D();
       return client()
-        .then(c => withTimeout(c.database.from(TABLE)
-          .delete()
-          .eq('page', s.page).eq('slot', s.key).eq('ix', s.ix), 8000))
+        .then(c => withTimeout(c.database.rpc('cuiyu_del_slot', {
+          p_passcode: cfg.passcode || '',
+          p_page: s.page, p_key: s.key, p_ix: s.ix
+        }), 8000))
         .catch(() => {});
     }
 

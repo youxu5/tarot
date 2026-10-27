@@ -18,6 +18,9 @@ const CONFIG = {
     publishableKey: 'wbpk_p7SWMhcRww37VUgFTI1xc3_w81WiVKdg0hMWogQoB8WcX5Ki3Pc7tVG',
     page: 'cuiyulu',   // 站点标识，避免和其他项目抢同一个槽位
     key: 'cup',        // 默认槽位名（圣杯页照片）
+    // 写入口令：必须与云端函数 cuiyu_set_slot / cuiyu_del_slot 里校验的一致。
+    // 只改这里不会生效——云端还会再校验一次，两边要一起改。
+    passcode: '520',
     ix: 0,
     passcode: '520'    // 与页面上的隐藏上传口令一致，云端二次校验用
   },
