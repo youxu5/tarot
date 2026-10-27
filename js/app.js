@@ -964,6 +964,7 @@
       const rev = Date.now();
       if (mode === 'cb') {
         const db = await dbClient();
+        let wErr = null;
         try {
           const old = await withTimeout(db.from(cbCol()).select('id')
             .eq('page', cbPage()).eq('key', s.key).eq('ix', s.ix).limit(1), 9000);
@@ -977,9 +978,18 @@
               .insert({ page: cbPage(), key: s.key, ix: s.ix, url: url, rev: rev, created_at: new Date().toISOString() }), 20000);
           }
         } catch (e) {
-          throw new Error('CloudBase 写入失败：' + ((e && e.message) || '') + '（多半是表的 GRANT/RLS 没放开）');
+          // PostgREST 的写操作默认返回空 body，SDK 有时会因此解析报错，
+          // 但数据其实已经落库了 —— 所以不能直接判失败，下面以回读结果为准。
+          wErr = e;
         }
-        return { url: url, rev: rev };
+        try {
+          const chk = await withTimeout(db.from(cbCol()).select('rev')
+            .eq('page', cbPage()).eq('key', s.key).eq('ix', s.ix).limit(1), 9000);
+          const got = (((chk && (chk.data || chk)) || [])[0]) || null;
+          if (got && String(got.rev) === String(rev)) return { url: url, rev: rev };   // 回读确认 = 真的写进去了
+        } catch (e) { if (!wErr) wErr = e; }
+        throw new Error('CloudBase 写入失败：' + ((wErr && wErr.message) || '') +
+          '（多半是表还没建、或 GRANT/RLS 没放开）');
       }
       const c = await client();
       // 不能直接 upsert 表：那张表只对访客开放读，硬写会被 RLS 挡回来。
