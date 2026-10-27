@@ -2201,7 +2201,22 @@
     gameStarted = true;
     playIntro();
   }
+  window.__peibanBooted = true;   /* 全部初始化完成（崩溃保底脚本据此判断） */
 })();
+</script>
+<script>
+/* 崩溃保底：主脚本若在手机浏览器上报错挂掉，纯黑开始界面会变成无声黑屏。
+   5 秒后仍未完成初始化就直接在黑屏上显示原因，把「什么都没有」变成可见的报错。 */
+window.addEventListener('error', function(e){ window.__peibanErr = String((e && e.message) || e).slice(0, 80); });
+setTimeout(function(){
+  if(window.__peibanBooted) return;
+  var el = document.getElementById('startScr');
+  if(!el) return;
+  var tip = document.createElement('div');
+  tip.style.cssText = 'position:absolute;left:0;right:0;bottom:14%;text-align:center;color:#999;font:12px/1.8 monospace,monospace;padding:0 24px;';
+  tip.textContent = '加载出错(' + (window.__peibanErr || '脚本未完成初始化') + ')，请刷新重试；仍不行请换浏览器打开。';
+  el.appendChild(tip);
+}, 5000);
 </script>
 </body>
 </html>
