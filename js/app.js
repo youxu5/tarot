@@ -779,16 +779,20 @@
     const STEPS = [[1100, .75], [900, .66], [720, .58], [560, .5]];  // 逐级压小，直到塞得进数据库
     const MAXLEN = 520000;                                           // data URL 字符上限（约 390KB）
     let cfg = null, on = false, cloud = null, sdkP = null;
-    // 两条后端通道：
-    //   'cb' = 腾讯云开发 CloudBase —— 允许任意站点调用，GitHub Pages 也能读写（推荐，跨站可用）
-    //   'wb' = WorkBuddy 云          —— 只认它自己的应用域名，别的域名一来预检就被拦
-    let mode = 'none', cbCfg = null, dbPromise = null, cbSdkP = null;
+    // 三条后端通道（按顺序取第一个配好的）：
+    //   'sb' = Supabase       —— 免费、不用实名、任何站点都能跨域调用（当前默认）
+    //   'cb' = 腾讯云开发      —— 国内最快，但「跨域白名单」要付费<｜hy_place▁holder▁no▁813｜>（个人版 19.9/月）
+    //   'wb' = WorkBuddy 云    —— 只认它自己的应用域名，别的域名预检一律被拦
+    let mode = 'none', cbCfg = null, dbPromise = null, cbSdkP = null, sbCfg = null;
 
     function init(c) {
       try {
-        // 优先用 CloudBase：只要 config.cloudbase.env 填了就走这条
-        cbCfg = (typeof CONFIG !== 'undefined' && CONFIG.cloudbase) || null;
-        if (cbCfg && cbCfg.env) { mode = 'cb'; cfg = cbCfg; on = true; return; }
+        const C = (typeof CONFIG !== 'undefined') ? CONFIG : null;
+        cbCfg = (C && C.cloudbase) || null;
+        sbCfg = (C && C.supabase) || null;
+        // CloudBase 必须同时有 env 和 key 才算配好（缺 key 说明付费/白名单那套没走完）
+        if (cbCfg && cbCfg.env && cbCfg.accessKey) { mode = 'cb'; cfg = cbCfg; on = true; return; }
+        if (sbCfg && sbCfg.url && sbCfg.anonKey) { mode = 'sb'; cfg = sbCfg; on = true; return; }
         cfg = c || null;
         on = !!(cfg && cfg.endpoint && cfg.publishableKey && cfg.page);
         mode = on ? 'wb' : 'none';
@@ -877,10 +881,36 @@
     const cbPage = () => cfg.page || 'cuiyulu';
     const cbCol = () => cfg.collection || 'cuiyu_slots';
 
+    /* ---- Supabase：直接打它的 REST 接口 ----
+     * 不用它家的 SDK：省一百多 KB，也不再依赖外部 CDN（之前被 jsdelivr 拖死过）。
+     * anonKey 本来就是设计给你放前端的，真正的权限由数据库的行级策略管。
+     */
+    const sbBase = () => String(cfg.url).replace(/\/+$/, '') + '/rest/v1/' + (cfg.table || 'cuiyu_slots');
+    const sbHead = (extra) => Object.assign({
+      apikey: cfg.anonKey,
+      Authorization: 'Bearer ' + cfg.anonKey,
+      Accept: 'application/json'
+    }, extra || {});
+    const sbSel = (extra, key, ix) => '?select=' + extra +
+      '&page=eq.' + encodeURIComponent(cfg.page) +
+      '&key=eq.' + encodeURIComponent((key === undefined || key === null) ? cfg.key : key) +
+      ((ix === undefined || ix === null) ? '' : '&ix=eq.' + encodeURIComponent(ix));
+    async function sbRows(path) {
+      const r = await fetch(sbBase() + path, { headers: sbHead(), cache: 'no-store' });
+      if (!r.ok) return [];                       // 表不存在 / 权限没开都会在这里体现
+      try { const j = await r.json(); return Array.isArray(j) ? j : (j ? [j] : []); }
+      catch (e) { return []; }
+    }
+
     async function load(slot) {
       if (!on) return null;
       const s = slot || D();
       try {
+        if (mode === 'sb') {
+          const rows = await withTimeout(sbRows(sbSel('url,rev', s.key, s.ix) + '&order=created_at.desc&limit=1'), 9000);
+          const row = rows[0] || null;
+          return (row && row.rev && row.url) ? { url: row.url, rev: row.rev } : null;
+        }
         if (mode === 'cb') {
           const db = await dbClient();
           const r = await withTimeout(db.from(cbCol())
@@ -905,6 +935,16 @@
     async function loadAll(key) {
       if (!on) return null;
       try {
+        if (mode === 'sb') {
+          const rows = await withTimeout(sbRows(sbSel('ix,url,rev,created_at', key)), 10000);
+          const map = {}, at = {};
+          rows.forEach(row => {
+            if (!row || !row.rev || !row.url || row.ix === undefined) return;
+            const t = Date.parse(row.created_at) || 0;
+            if (!map[row.ix] || t >= at[row.ix]) { map[row.ix] = { url: row.url, rev: row.rev }; at[row.ix] = t; }
+          });
+          return map;
+        }
         if (mode === 'cb') {
           const db = await dbClient();
           const r = await withTimeout(db.from(cbCol())
@@ -962,6 +1002,29 @@
       const s = slot || D();
       const url = await blobToDataUrl(blob);
       const rev = Date.now();
+      if (mode === 'sb') {
+        let wErr = null;
+        try {
+          const rows = await withTimeout(sbRows(sbSel('id', s.key, s.ix) + '&limit=1'), 9000);
+          const row = rows[0] || null;
+          const body = JSON.stringify(row && row.id != null
+            ? { url: url, rev: rev, updated_at: new Date().toISOString() }
+            : { page: cfg.page, key: s.key, ix: s.ix, url: url, rev: rev, created_at: new Date().toISOString() });
+          const r = await fetch(sbBase() + ((row && row.id != null) ? ('?id=eq.' + encodeURIComponent(row.id)) : ''), {
+            method: (row && row.id != null) ? 'PATCH' : 'POST',
+            headers: sbHead({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
+            body: body
+          });
+          if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + (await r.text()).slice(0, 120));
+        } catch (e) { wErr = e; }
+        try {                                   // 同样以回读为准，避免"报错其实已写入"的误判
+          const chk = await withTimeout(sbRows(sbSel('rev', s.key, s.ix) + '&limit=1'), 9000);
+          const got = chk[0] || null;
+          if (got && String(got.rev) === String(rev)) return { url: url, rev: rev };
+        } catch (e) { if (!wErr) wErr = e; }
+        throw new Error('Supabase 写入失败：' + ((wErr && wErr.message) || '') +
+          '（多半是表还没建、或 RLS 没放开）');
+      }
       if (mode === 'cb') {
         const db = await dbClient();
         let wErr = null;
@@ -1006,6 +1069,14 @@
     function remove(slot) {               // 删云端：失败就算了，不影响本机清除
       if (!on) return Promise.resolve();
       const s = slot || D();
+      if (mode === 'sb') {
+        return withTimeout(sbRows(sbSel('id', s.key, s.ix)), 8000)
+          .then(rows => Promise.all(rows.map(row => (row && row.id != null)
+            ? fetch(sbBase() + '?id=eq.' + encodeURIComponent(row.id),
+                { method: 'DELETE', headers: sbHead() }).catch(() => {})
+            : null)))
+          .catch(() => {});
+      }
       if (mode === 'cb') {
         return dbClient()
           .then(db => withTimeout(db.from(cbCol()).select('id')
