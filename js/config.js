@@ -102,7 +102,6 @@ const CONFIG = {
         // 照片堆：右下角角标循环切换（想加照片就在数组里加一行 'assets/xxx.jpg'）
         cupPhotos: [
           'assets/cups-photo.jpg',
-          'assets/wushan.jpg',
         ],
         // 照片堆下面、上传画布上面夹的一句话（\n 表示换行，老板可随意改）
         cupGapText: '捆绑在一起吧\n头发  命运  我和你',
