@@ -11,19 +11,27 @@ const CONFIG = {
    * 而是传到云端，任何访客刷新都能看到最新那张 —— 访客不需要登录。
    * 上传入口仍是隐藏的（连点 5 次 + 口令），写入时云端会再校验一次口令。
    * 网络不畅时自动退回本机模式，照片不会白屏、不会丢。
+   *
+   * 【自动开关】只在主站域名下启用。GitHub Pages 那份是给微信兜底的静态
+   * 镜像，域名不同、云端会直接拒绝，所以那里自动置 null、走纯本机模式，
+   * 不发任何多余请求（微信里打开更快，也不会报跨域错）。
    */
-  cloud: {
-    endpoint: 'https://emerald-tablet-tarot.app.workbuddy.host',
-    oauthRelayBaseUrl: 'https://www.workbuddy.cn/v2/as/genie-baas/oauth',
-    publishableKey: 'wbpk_p7SWMhcRww37VUgFTI1xc3_w81WiVKdg0hMWogQoB8WcX5Ki3Pc7tVG',
-    page: 'cuiyulu',   // 站点标识，避免和其他项目抢同一个槽位
-    key: 'cup',        // 默认槽位名（圣杯页照片）
-    // 写入口令：必须与云端函数 cuiyu_set_slot / cuiyu_del_slot 里校验的一致。
-    // 只改这里不会生效——云端还会再校验一次，两边要一起改。
-    passcode: '520',
-    ix: 0,
-    passcode: '520'    // 与页面上的隐藏上传口令一致，云端二次校验用
-  },
+  cloud: (function () {
+    const CLOUD_HOSTS = ['emerald-tablet-tarot.app.workbuddy.host'];
+    let on = false;
+    try { on = CLOUD_HOSTS.indexOf(location.hostname) >= 0; } catch (e) { on = false; }
+    return on ? {
+      endpoint: 'https://emerald-tablet-tarot.app.workbuddy.host',
+      oauthRelayBaseUrl: 'https://www.workbuddy.cn/v2/as/genie-baas/oauth',
+      publishableKey: 'wbpk_p7SWMhcRww37VUgFTI1xc3_w81WiVKdg0hMWogQoB8WcX5Ki3Pc7tVG',
+      page: 'cuiyulu',   // 站点标识，避免和其他项目抢同一个槽位
+      key: 'cup',        // 默认槽位名（圣杯页照片）
+      ix: 0,
+      // 写入口令：必须与云端函数 cuiyu_set_slot / cuiyu_del_slot 里校验的一致。
+      // 只改这里不会生效——云端还会再校验一次，两边要一起改。
+      passcode: '520'
+    } : null;
+  })(),
 
   /* ---------- 第一页：首页 ---------- */
   home: {
