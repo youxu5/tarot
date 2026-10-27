@@ -832,13 +832,21 @@
     function dbClient() {
       if (dbPromise) return dbPromise;
       dbPromise = ensureCB().then(async g => {
-        const app = g.init({ env: cbCfg.env, region: cbCfg.region || 'ap-shanghai' });
-        const auth = app.auth({ persistence: 'local' });
-        try {
-          const st = auth.hasLoginState ? auth.hasLoginState() : null;
-          if (!st) await auth.signInAnonymously();   // 匿名登录：访客不用注册也能读写（权限由集合安全规则控制）
-        } catch (e) { throw new Error('CloudBase 匿名登录失败（控制台开启匿名登录了吗？）'); }
-        return app.database();
+        // Publishable Key（accessKey）本身就是匿名身份（anon 角色）——前端可以放，
+        // 真正的权限由数据表的 GRANT + RLS 管。没配 key 时才退回匿名登录。
+        const app = g.init({
+          env: cbCfg.env,
+          accessKey: cbCfg.accessKey || undefined,
+          region: cbCfg.region || 'ap-shanghai'
+        });
+        if (!cbCfg.accessKey) {
+          try {
+            const auth = app.auth({ persistence: 'local' });
+            const st = auth.hasLoginState ? auth.hasLoginState() : null;
+            if (!st) await auth.signInAnonymously();
+          } catch (e) { throw new Error('CloudBase 匿名登录失败（控制台开启匿名登录了吗？）'); }
+        }
+        return app.rdb ? app.rdb() : app.database();   // PG 模式用 rdb()；老文档型环境退回 database()
       }).catch(e => { dbPromise = null; throw e; });
       return dbPromise;
     }
@@ -868,11 +876,6 @@
 
     const cbPage = () => cfg.page || 'cuiyulu';
     const cbCol = () => cfg.collection || 'cuiyu_slots';
-    const cbWhere = (key, ix) => {
-      const w = { page: cbPage(), key: key };
-      if (ix !== undefined && ix !== null) w.ix = ix;
-      return w;
-    };
 
     async function load(slot) {
       if (!on) return null;
@@ -880,10 +883,12 @@
       try {
         if (mode === 'cb') {
           const db = await dbClient();
-          const r = await withTimeout(db.collection(cbCol())
-            .where(cbWhere(s.key, s.ix))
-            .orderBy('created_at', 'desc').limit(1).get(), 9000);
-          const row = (r && r.data && r.data[0]) || null;
+          const r = await withTimeout(db.from(cbCol())
+            .select('ix,url,rev,created_at')
+            .eq('page', cbPage()).eq('key', s.key).eq('ix', s.ix)
+            .order('created_at', { ascending: false }).limit(1), 9000);
+          if (r && r.error) return null;
+          const row = ((r && (r.data || r)) || [])[0] || null;
           return (row && row.rev && row.url) ? { url: row.url, rev: row.rev } : null;
         }
         const c = await client();
@@ -902,13 +907,14 @@
       try {
         if (mode === 'cb') {
           const db = await dbClient();
-          const r = await withTimeout(db.collection(cbCol())
-            .where(cbWhere(key)).get(), 10000);
-          if (!r || !r.data) return null;
+          const r = await withTimeout(db.from(cbCol())
+            .select('ix,url,rev,created_at')
+            .eq('page', cbPage()).eq('key', key), 10000);
+          if (!r || r.error) return null;
           const map = {}, at = {};
-          (r.data || []).forEach(row => {
+          ((r && (r.data || r)) || []).forEach(row => {
             if (!row || !row.rev || !row.url || row.ix === undefined) return;
-            const t = Number(row.created_at) || 0;
+            const t = Number(new Date(row.created_at).getTime()) || 0;
             if (!map[row.ix] || t >= at[row.ix]) { map[row.ix] = { url: row.url, rev: row.rev }; at[row.ix] = t; }
           });
           return map;
@@ -958,18 +964,20 @@
       const rev = Date.now();
       if (mode === 'cb') {
         const db = await dbClient();
-        const col = db.collection(cbCol());
-        const cond = cbWhere(s.key, s.ix);
         try {
-          const old = await withTimeout(col.where(cond).limit(1).get(), 9000);
-          const row = (old && old.data && old.data[0]) || null;
-          if (row && row._id) {
-            await withTimeout(col.doc(row._id).update({ url: url, rev: rev, updated_at: rev }), 20000);
+          const old = await withTimeout(db.from(cbCol()).select('id')
+            .eq('page', cbPage()).eq('key', s.key).eq('ix', s.ix).limit(1), 9000);
+          const row = (((old && (old.data || old)) || [])[0]) || null;
+          if (row && row.id != null) {
+            await withTimeout(db.from(cbCol())
+              .update({ url: url, rev: rev, updated_at: new Date().toISOString() })
+              .eq('id', row.id), 20000);
           } else {
-            await withTimeout(col.add(Object.assign({}, cond, { url: url, rev: rev, created_at: rev })), 20000);
+            await withTimeout(db.from(cbCol())
+              .insert({ page: cbPage(), key: s.key, ix: s.ix, url: url, rev: rev, created_at: new Date().toISOString() }), 20000);
           }
         } catch (e) {
-          throw new Error('CloudBase 写入失败：集合的写权限开了吗？' + ((e && e.message) ? '（' + e.message + '）' : ''));
+          throw new Error('CloudBase 写入失败：' + ((e && e.message) || '') + '（多半是表的 GRANT/RLS 没放开）');
         }
         return { url: url, rev: rev };
       }
@@ -990,9 +998,12 @@
       const s = slot || D();
       if (mode === 'cb') {
         return dbClient()
-          .then(db => withTimeout(db.collection(cbCol()).where(cbWhere(s.key, s.ix)).get(), 8000))
-          .then(r => Promise.all(((r && r.data) || []).map(row =>
-            row && row._id ? dbClient().then(db => db.collection(cbCol()).doc(row._id).remove()) : null)))
+          .then(db => withTimeout(db.from(cbCol()).select('id')
+            .eq('page', cbPage()).eq('key', s.key).eq('ix', s.ix), 8000))
+          .then(r => Promise.all((((r && (r.data || r)) || [])).map(row =>
+            row && row.id != null
+              ? dbClient().then(db2 => db2.from(cbCol()).delete().eq('id', row.id))
+              : null)))
           .catch(() => {});
       }
       return client()

@@ -33,22 +33,23 @@ const CONFIG = {
     } : null;
   })(),
 
-  /* ---------- 腾讯云开发 CloudBase（推荐：任何站点都能连） ----------
-   * 和上面的 WorkBuddy 云是两条通道，同时存在时以这里为准。
-   * 它的好处：不挑域名。GitHub Pages 那份也能读写同一份数据，
-   * 所以老板和客人可以共用同一个链接。
+  /* ---------- 腾讯云开发 CloudBase · PostgreSQL 模式（推荐：任何站点都能连） ----------
+   * 和上面的 WorkBuddy 云是两条通道，这里填了就以这里为准。
+   * 好处：不挑域名，GitHub Pages 那份也能读写同一份数据 —— 老板和客人共用一个链接。
    *
-   * 【开通三步，做完把 env 填回来即可】
-   *   1) https://tcb.cloud.tencent.com/ 新建/进入按量计费（免费额度够用）环境
-   *   2) 环境 → 安全配置：① 登录方式里打开「匿名登录」
-   *      ② Web 安全域名里加上 youxu5.github.io 和 emerald-tablet-tarot.app.workbuddy.host
-   *   3) 数据库里新建集合 cuiyu_slots，权限设成「所有用户可读、所有用户可写」
-   *      （写操作受页面上的 520 口令保护；想更严就用云函数来做写入）
+   * 【开通四步（对应新版控制台 tcb.cloud.tencent.com）】
+   *   1) 环境管理 → API Key 配置 → 点「生成」Publishable Key，
+   *      把生成的 key 填到下面 accessKey（它是匿名身份，前端可放，权限由表的 GRANT/RLS 管）
+   *   2) PostgreSQL → SQL 查询里执行项目根目录 cloudbase-setup.sql（建表 + 放权限）
+   *   3) 身份认证 → 登录方式：开着匿名登录也无妨（有 accessKey 时其实用不上）
+   *   4) Web 安全域名：找到「环境设置/安全」里的网站域名列表，加上 youxu5.github.io
+   *      （漏了这步浏览器会报 CORS 跨域错；改完约 10 分钟生效）
    */
   cloudbase: {
-    env: '',                 // ←←← 控制台里那串环境 ID，形如 xxx-1gxxxxxxxxxx
-    region: 'ap-shanghai',   // 环境所在地域，不确定就留 ap-shanghai
-    collection: 'cuiyu_slots',
+    env: 'grubby-aphid-d8g6q352h76f657a4',   // 环境ID（地址栏 envId= 后面那串）
+    accessKey: '',                            // ←←← Publishable Key，生成后粘到这里
+    region: 'ap-shanghai',
+    collection: 'cuiyu_slots',                // PG 里就是表名 public.cuiyu_slots
     page: 'cuiyulu',
     key: 'cup',
     ix: 0
