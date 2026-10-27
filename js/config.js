@@ -33,6 +33,27 @@ const CONFIG = {
     } : null;
   })(),
 
+  /* ---------- 腾讯云开发 CloudBase（推荐：任何站点都能连） ----------
+   * 和上面的 WorkBuddy 云是两条通道，同时存在时以这里为准。
+   * 它的好处：不挑域名。GitHub Pages 那份也能读写同一份数据，
+   * 所以老板和客人可以共用同一个链接。
+   *
+   * 【开通三步，做完把 env 填回来即可】
+   *   1) https://tcb.cloud.tencent.com/ 新建/进入按量计费（免费额度够用）环境
+   *   2) 环境 → 安全配置：① 登录方式里打开「匿名登录」
+   *      ② Web 安全域名里加上 youxu5.github.io 和 emerald-tablet-tarot.app.workbuddy.host
+   *   3) 数据库里新建集合 cuiyu_slots，权限设成「所有用户可读、所有用户可写」
+   *      （写操作受页面上的 520 口令保护；想更严就用云函数来做写入）
+   */
+  cloudbase: {
+    env: '',                 // ←←← 控制台里那串环境 ID，形如 xxx-1gxxxxxxxxxx
+    region: 'ap-shanghai',   // 环境所在地域，不确定就留 ap-shanghai
+    collection: 'cuiyu_slots',
+    page: 'cuiyulu',
+    key: 'cup',
+    ix: 0
+  },
+
   /* ---------- 第一页：首页 ---------- */
   home: {
     // 卡牌柔光多边形的四个角点 —— 【注意：现在填的是照片原图里的像素坐标】

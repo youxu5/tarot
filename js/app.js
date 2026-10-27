@@ -774,14 +774,25 @@
   const Cloud = (() => {
     const SDK_CDN = 'https://cdn.jsdelivr.net/npm/@tencent-ai/workbuddy-cloud-sdk@dev/lib/index.global.js';
     const SDK_LOCAL = 'js/cloud-sdk.js?v=1';
+    const SDK_CB = 'js/cloudbase.full.js';      // 腾讯云开发 Web SDK（本地副本，不依赖外网 CDN）
     const TABLE = 'cuiyu_slots';   // 云端实际表名（曾误写成 slot_images，导致读写打在空表上）
     const STEPS = [[1100, .75], [900, .66], [720, .58], [560, .5]];  // 逐级压小，直到塞得进数据库
     const MAXLEN = 520000;                                           // data URL 字符上限（约 390KB）
     let cfg = null, on = false, cloud = null, sdkP = null;
+    // 两条后端通道：
+    //   'cb' = 腾讯云开发 CloudBase —— 允许任意站点调用，GitHub Pages 也能读写（推荐，跨站可用）
+    //   'wb' = WorkBuddy 云          —— 只认它自己的应用域名，别的域名一来预检就被拦
+    let mode = 'none', cbCfg = null, dbPromise = null, cbSdkP = null;
 
     function init(c) {
-      try { cfg = c || null; on = !!(cfg && cfg.endpoint && cfg.publishableKey && cfg.page); }
-      catch (e) { on = false; }
+      try {
+        // 优先用 CloudBase：只要 config.cloudbase.env 填了就走这条
+        cbCfg = (typeof CONFIG !== 'undefined' && CONFIG.cloudbase) || null;
+        if (cbCfg && cbCfg.env) { mode = 'cb'; cfg = cbCfg; on = true; return; }
+        cfg = c || null;
+        on = !!(cfg && cfg.endpoint && cfg.publishableKey && cfg.page);
+        mode = on ? 'wb' : 'none';
+      } catch (e) { cfg = null; on = false; mode = 'none'; }
     }
     function ready() { return on; }
 
@@ -807,7 +818,33 @@
         .catch(e => { sdkP = null; throw e; });
       return sdkP;
     }
+    /* 腾讯云开发：拿到数据库句柄（首次会做匿名登录，之后复用） */
+    function ensureCB() {
+      if (typeof window !== 'undefined' && window.cloudbase) return Promise.resolve(window.cloudbase);
+      if (cbSdkP) return cbSdkP;
+      cbSdkP = loadScript(SDK_CB).then(() => {
+        const g = (typeof window !== 'undefined') ? window.cloudbase : null;
+        if (!g) throw new Error('CloudBase SDK 未挂载全局变量');
+        return g;
+      }).catch(e => { cbSdkP = null; throw e; });
+      return cbSdkP;
+    }
+    function dbClient() {
+      if (dbPromise) return dbPromise;
+      dbPromise = ensureCB().then(async g => {
+        const app = g.init({ env: cbCfg.env, region: cbCfg.region || 'ap-shanghai' });
+        const auth = app.auth({ persistence: 'local' });
+        try {
+          const st = auth.hasLoginState ? auth.hasLoginState() : null;
+          if (!st) await auth.signInAnonymously();   // 匿名登录：访客不用注册也能读写（权限由集合安全规则控制）
+        } catch (e) { throw new Error('CloudBase 匿名登录失败（控制台开启匿名登录了吗？）'); }
+        return app.database();
+      }).catch(e => { dbPromise = null; throw e; });
+      return dbPromise;
+    }
+
     function client() {                    // endpoint / publishableKey 全部来自 config.js（= activate 返回的 publicConfig）
+      if (mode === 'cb') return dbClient();
       if (cloud) return Promise.resolve(cloud);
       if (!on) return Promise.reject(new Error('云端未配置'));
       return ensureSDK().then(g => {
@@ -829,10 +866,26 @@
     const D = () => ({ page: cfg.page, key: cfg.key, ix: cfg.ix });
     const pick = (rows) => (rows && rows[0]) || null;
 
+    const cbPage = () => cfg.page || 'cuiyulu';
+    const cbCol = () => cfg.collection || 'cuiyu_slots';
+    const cbWhere = (key, ix) => {
+      const w = { page: cbPage(), key: key };
+      if (ix !== undefined && ix !== null) w.ix = ix;
+      return w;
+    };
+
     async function load(slot) {
       if (!on) return null;
       const s = slot || D();
       try {
+        if (mode === 'cb') {
+          const db = await dbClient();
+          const r = await withTimeout(db.collection(cbCol())
+            .where(cbWhere(s.key, s.ix))
+            .orderBy('created_at', 'desc').limit(1).get(), 9000);
+          const row = (r && r.data && r.data[0]) || null;
+          return (row && row.rev && row.url) ? { url: row.url, rev: row.rev } : null;
+        }
         const c = await client();
         const r = await withTimeout(c.database.from(TABLE)
           .select('url,rev')
@@ -847,6 +900,19 @@
     async function loadAll(key) {
       if (!on) return null;
       try {
+        if (mode === 'cb') {
+          const db = await dbClient();
+          const r = await withTimeout(db.collection(cbCol())
+            .where(cbWhere(key)).get(), 10000);
+          if (!r || !r.data) return null;
+          const map = {}, at = {};
+          (r.data || []).forEach(row => {
+            if (!row || !row.rev || !row.url || row.ix === undefined) return;
+            const t = Number(row.created_at) || 0;
+            if (!map[row.ix] || t >= at[row.ix]) { map[row.ix] = { url: row.url, rev: row.rev }; at[row.ix] = t; }
+          });
+          return map;
+        }
         const c = await client();
         const r = await withTimeout(c.database.from(TABLE)
           .select('ix,url,rev')
@@ -890,6 +956,23 @@
       const s = slot || D();
       const url = await blobToDataUrl(blob);
       const rev = Date.now();
+      if (mode === 'cb') {
+        const db = await dbClient();
+        const col = db.collection(cbCol());
+        const cond = cbWhere(s.key, s.ix);
+        try {
+          const old = await withTimeout(col.where(cond).limit(1).get(), 9000);
+          const row = (old && old.data && old.data[0]) || null;
+          if (row && row._id) {
+            await withTimeout(col.doc(row._id).update({ url: url, rev: rev, updated_at: rev }), 20000);
+          } else {
+            await withTimeout(col.add(Object.assign({}, cond, { url: url, rev: rev, created_at: rev })), 20000);
+          }
+        } catch (e) {
+          throw new Error('CloudBase 写入失败：集合的写权限开了吗？' + ((e && e.message) ? '（' + e.message + '）' : ''));
+        }
+        return { url: url, rev: rev };
+      }
       const c = await client();
       // 不能直接 upsert 表：那张表只对访客开放读，硬写会被 RLS 挡回来。
       // 走 SECURITY DEFINER 函数，由服务端再校验一次口令。
@@ -905,6 +988,13 @@
     function remove(slot) {               // 删云端：失败就算了，不影响本机清除
       if (!on) return Promise.resolve();
       const s = slot || D();
+      if (mode === 'cb') {
+        return dbClient()
+          .then(db => withTimeout(db.collection(cbCol()).where(cbWhere(s.key, s.ix)).get(), 8000))
+          .then(r => Promise.all(((r && r.data) || []).map(row =>
+            row && row._id ? dbClient().then(db => db.collection(cbCol()).doc(row._id).remove()) : null)))
+          .catch(() => {});
+      }
       return client()
         .then(c => withTimeout(c.database.rpc('cuiyu_del_slot', {
           p_passcode: cfg.passcode || '',
