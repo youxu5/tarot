@@ -1953,15 +1953,27 @@ body.scroll-page .music-bird { bottom: 24%; }
   0%, 100% { filter: drop-shadow(0 4px 14px rgba(120, 80, 10, .35)) drop-shadow(0 0 6px rgba(255, 214, 120, .25)); }
   50%      { filter: drop-shadow(0 4px 14px rgba(120, 80, 10, .35)) drop-shadow(0 0 16px rgba(255, 222, 140, .55)); }
 }
-/* 倒满之后：光辉更盛（注意保留出场动画的终态，否则杯子会缩回隐形） */
+/* 倒满之后：圣杯功成身退 —— 最后亮一下，再向上飘散淡出，把舞台让给后面的画框 */
 .cups-stage.done .cup-chalice {
   transform: translateX(-50%) scale(1);
-  opacity: 1;
-  animation: cup-shine-full 2.2s ease-in-out infinite;
+  animation: cup-retreat 1.05s cubic-bezier(.45, 0, .6, 1) forwards;
 }
-@keyframes cup-shine-full {
-  0%, 100% { filter: drop-shadow(0 4px 16px rgba(150, 100, 15, .45)) drop-shadow(0 0 18px rgba(255, 222, 140, .6)); }
-  50%      { filter: drop-shadow(0 4px 16px rgba(150, 100, 15, .45)) drop-shadow(0 0 34px rgba(255, 230, 160, .85)); }
+@keyframes cup-retreat {
+  0% {
+    transform: translateX(-50%) scale(1) translateY(0);
+    opacity: 1;
+    filter: drop-shadow(0 4px 16px rgba(150, 100, 15, .45)) drop-shadow(0 0 18px rgba(255, 222, 140, .6));
+  }
+  20% {
+    transform: translateX(-50%) scale(1.06) translateY(-2%);
+    opacity: 1;
+    filter: drop-shadow(0 4px 16px rgba(150, 100, 15, .45)) drop-shadow(0 0 42px rgba(255, 236, 172, .95));
+  }
+  100% {
+    transform: translateX(-50%) scale(.58) translateY(-20%);
+    opacity: 0;
+    filter: drop-shadow(0 4px 16px rgba(150, 100, 15, 0)) drop-shadow(0 0 26px rgba(255, 230, 160, .18));
+  }
 }
 /* 杯膛里的蜜酒：默认沉在杯底外，注酒时升起 */
 .cup-wine { transform: translateY(72px); }
@@ -1987,7 +1999,12 @@ body.scroll-page .music-bird { bottom: 24%; }
   opacity: 0;
   z-index: 3;
 }
-.cups-stage.done .cup-halo { opacity: 1; animation: pile-pulse 2.4s ease-in-out infinite; }
+/* 杯走了，光晕跟着散掉，不留孤立的一团暖光压在句子上 */
+.cups-stage.done .cup-halo { animation: halo-out 1.05s ease-out forwards; }
+@keyframes halo-out {
+  0%   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.35); }
+}
 
 /* ---------- 金壶：入场 → 倾斜倒酒 → 直起 → 退场 ---------- */
 .cup-jug {
@@ -2054,8 +2071,9 @@ body.scroll-page .music-bird { bottom: 24%; }
     inset 0 0 0 1px rgba(150, 140, 175, .28),
     0 0 30px rgba(190, 165, 255, .22);
 }
+/* 延迟 .55s：等上面的金杯飘走了再浮上来，两段动画不打架 */
 .cups-stage.done .cup-photo {
-  animation: photo-in 1.1s cubic-bezier(.2, .9, .3, 1.12) .2s forwards;
+  animation: photo-in 1.1s cubic-bezier(.2, .9, .3, 1.12) .55s forwards;
 }
 @keyframes photo-in {
   from { transform: translate(-50%, -50%) scale(.55); opacity: 0; }
@@ -2236,6 +2254,20 @@ body.scroll-page .music-bird { bottom: 24%; }
   pointer-events: none;
   z-index: 3;
 }
+/* 视频演完 → 金杯画面飘散淡出，把舞台让给后面的两个画框和那句话 */
+.cups-stage.done .cup-video {
+  animation: cup-video-out 1.05s cubic-bezier(.45, 0, .6, 1) forwards;
+}
+@keyframes cup-video-out {
+  0%   { opacity: 1; transform: scale(1) translateY(0); }
+  18%  { opacity: 1; transform: scale(1.035) translateY(-1.5%); }
+  100% { opacity: 0; transform: scale(.7) translateY(-10%); }
+}
+/* 抠像失败走直出时的后备：只淡出不缩放 —— 这条路靠 mix-blend-mode，动 transform 有黑块风险 */
+.cups-stage.done .cup-video-src.cup-fallback {
+  animation: cup-video-fade 1.05s ease-out forwards;
+}
+@keyframes cup-video-fade { to { opacity: 0; } }
 /* 单枚厚星币：居中翻转一圈后变出须知弹窗（替代旧的金币视频） */
 .pt-coin3d.pt-solo {
   left: 50%;
@@ -2305,8 +2337,8 @@ body.scroll-page .music-bird { bottom: 24%; }
 .cup-under.u1 { transform: translate(-49.2%, -47%) rotate(2.2deg); }
 .cup-under.u2 { transform: translate(-50.9%, -53%) rotate(-2.6deg); }
 .cups-stage.done .cup-under { opacity: 1; }
-.cups-stage.done .cup-under.u1 { animation: photo-in 1s cubic-bezier(.2, .9, .3, 1.12) .34s backwards; }
-.cups-stage.done .cup-under.u2 { animation: photo-in 1s cubic-bezier(.2, .9, .3, 1.12) .46s backwards; }
+.cups-stage.done .cup-under.u1 { animation: photo-in 1s cubic-bezier(.2, .9, .3, 1.12) .72s backwards; }
+.cups-stage.done .cup-under.u2 { animation: photo-in 1s cubic-bezier(.2, .9, .3, 1.12) .84s backwards; }
 /* 每翻一张，堆叠层微调角度，像真的在翻一摞照片 */
 .cup-stack-layers[data-turn="1"] .u1 { transform: translate(-50.8%, -53%) rotate(-2.4deg); }
 .cup-stack-layers[data-turn="1"] .u2 { transform: translate(-49.1%, -47%) rotate(2deg); }
@@ -2334,7 +2366,7 @@ body.scroll-page .music-bird { bottom: 24%; }
   transition: opacity .5s ease, background .2s ease, transform .2s ease;
   z-index: 3;
 }
-.cups-stage.done .cup-photo-next { opacity: .92; pointer-events: auto; }
+.cups-stage.done .cup-photo-next { opacity: .92; pointer-events: auto; transition-delay: 1.4s; }
 .cup-photo-next:hover { background: rgba(200, 190, 235, .3); transform: scale(1.1); }
 .cup-photo-next:active { transform: scale(.92); }
 
@@ -2370,7 +2402,7 @@ body.scroll-page .music-bird { bottom: 24%; }
     0 0 26px rgba(120, 170, 235, .3),
     0 2px 5px rgba(6, 12, 26, .75);
   opacity: 0;
-  transition: opacity 1.1s ease .5s;
+  transition: opacity 1.1s ease 1.1s;
   pointer-events: none;
   z-index: 6;
 }
@@ -2394,7 +2426,7 @@ body.scroll-page .music-bird { bottom: 24%; }
     0 12px 30px rgba(15, 8, 35, .5),
     inset 0 0 0 1px rgba(150, 140, 175, .22);
   opacity: 0;
-  transition: opacity 1.1s ease .8s;
+  transition: opacity 1.1s ease 1.4s;
   z-index: 7;
   cursor: pointer;
 }

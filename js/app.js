@@ -749,21 +749,38 @@
     if (gapLine) gapLine.textContent = king.cupGapText || '';
 
     setupCupUpload(stage, king);
-    layoutCupTail(stage);
+    scheduleCupTail(stage);
   }
 
-  /* 句子 + 上传框：按照片堆的真实底边接着往下排，任何屏幕都不重叠 */
+  /* 句子 + 上传框：按照片堆的真实底边接着往下排，任何屏幕都不重叠。
+   * 关键：用布局值（offsetTop / offsetHeight），不用 getBoundingClientRect ——
+   * 照片出场时是 scale(.55)→scale(1)，那一刻量到的底边是缩小后的，
+   * 句子和上传框会被算到照片肚子里去（压字、叠框）。 */
   function layoutCupTail(stage) {
     const ph = stage.querySelector('.cup-photo');
     const gap = stage.querySelector('.cup-gap-line');
     const up = stage.querySelector('.cup-upload');
     if (!ph || !gap || !up) return;
-    const sr = stage.getBoundingClientRect();
-    const pr = ph.getBoundingClientRect();
-    let y = pr.bottom - sr.top + 28;
+    // CSS 里照片是 top:33% + translateY(-50%)，视觉底边 = offsetTop + 半高
+    let y = ph.offsetTop + ph.offsetHeight / 2 + 28;
     gap.style.top = y + 'px';
     y += gap.offsetHeight + 30;
     up.style.top = y + 'px';
+  }
+  /* 三次兜底重排：图片加载完、字体加载完、出场动画收尾各一次，
+     因为这三件事都会让照片或句子的高度变。 */
+  function scheduleCupTail(stage) {
+    layoutCupTail(stage);
+    [80, 400, 1700].forEach(ms => setTimeout(() => layoutCupTail(stage), ms));
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => layoutCupTail(stage)).catch(() => {});
+    }
+    const im = stage.querySelector('.cup-photo-img');
+    if (im) {
+      const again = () => layoutCupTail(stage);
+      im.addEventListener('load', again);
+      im.addEventListener('error', again);
+    }
   }
 
   /* ---------- 云端同步：WorkBuddy 云服务（database 表 slot_images 存图片 data URL） ----------
