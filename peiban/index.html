@@ -1179,23 +1179,20 @@
       G.set(rline,  {opacity:.85});
       G.set(ui,    {autoAlpha:0, y:0});
       G.set(cards, {autoAlpha:0, y:0});
-      /* 花居中（最终位 top:700 → 屏幕中央需上移 334px）；蛇眼并排悬在花下方 */
+      /* 花居中（最终位 top:700 → 屏幕中央需上移 334px）；蛇眼一左一右直接在最终位待命 */
       G.set(bloom, {y:-334, scale:.9, transformOrigin:'50% 50%', autoAlpha:0, filter:'none'});
-      G.set(eyes[0], {x:82, y:-186, transformOrigin:'50% 50%', autoAlpha:0, filter:'none'});
-      G.set(eyes[1], {x:-82, y:-186, transformOrigin:'50% 50%', autoAlpha:0, filter:'none'});
+      G.set(eyes[0], {x:0, y:0, transformOrigin:'50% 50%', autoAlpha:0, filter:'none'});
+      G.set(eyes[1], {x:0, y:0, transformOrigin:'50% 50%', autoAlpha:0, filter:'none'});
       var rtl = G.timeline();
       /* 1. 玫瑰浮现于正中 */
       rtl.to(bloom, {autoAlpha:1, scale:1, duration:.9, ease:'power2.out'})
-      /* 2. 蛇眼出现，眨一下 */
-         .to(eyes, {autoAlpha:1, duration:.45, stagger:.1, ease:'power1.out'}, '+=0.2')
-         .to(eyes, {scaleY:.06, duration:.09, ease:'power2.in'})
-         .to(eyes, {scaleY:1, duration:.18, ease:'power2.out'})
-         .to({}, {duration:.35})                                  /* 停一拍 */
+      /* 2. 蛇眼在两侧原位浮现（不合拢、不眨眼），直接带背景虚化态 */
+         .to(eyes, {autoAlpha:.5, filter:'blur(3px)', duration:.8, stagger:.14, ease:'power1.out'}, '+=0.2')
+         .to({}, {duration:.25})                                  /* 停一拍 */
       /* 3. 板评图从底部升上来 */
          .fromTo(cards, {y:70}, {y:0, autoAlpha:1, duration:.9, stagger:.08, ease:'power2.out'}, '+=0.05')
-      /* 4. 花与眼睛落回背景位并虚化，红线也退回背景浓度 */
+      /* 4. 花落回背景位并虚化，红线退回背景浓度 */
          .to(bloom, {y:0, autoAlpha:.16, filter:'blur(3px)', duration:1.15, ease:'power1.inOut'}, '+=0.25')
-         .to(eyes,  {x:0, y:0, autoAlpha:.5, filter:'blur(3px)', duration:1.15, ease:'power1.inOut'}, '<')
          .to(rline, {opacity:.3, duration:1.15, ease:'power1.inOut'}, '<')
       /* 5. 界面文字浮现 */
          .to(ui, {autoAlpha:1, duration:.55, stagger:.06, ease:'power1.out'}, '-=0.55');
