@@ -2811,3 +2811,6 @@ body.scroll-page .music-bird { bottom: 24%; }
   0%, 100% { opacity: .25; }
   50% { opacity: .8; }
 }
+/* 锁死的格子：解锁态也不显示 ✕、不给手型光标 */
+.chapter-gallery.unlocked .gbox.locked .gx { display: none; }
+.chapter-gallery.unlocked .gbox.locked { cursor: default; }

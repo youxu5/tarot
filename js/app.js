@@ -1086,6 +1086,7 @@
       const box = document.createElement('div');
       box.className = 'gbox' + (item.span ? ' ' + item.span : '') + (item.fit === 'contain' ? ' fit-contain' : '');
       box.dataset.ix = ix;                        // 云端槽位号：cuiyulu-gal-<ix>
+      if (item.locked) box.classList.add('locked');   // 锁死：云端永远覆盖不了它
       // 底图：照片没铺满框时露出的背景（比如 ins 风紫纹理）
       if (item.bg) box.style.background = 'center / cover no-repeat url("' + item.bg + '?v=2")';
       if (item.src) {
@@ -1136,6 +1137,7 @@
       Cloud.loadAll('gal').then(map => {
         if (!map) return;
         gal.querySelectorAll('.gbox[data-ix]').forEach(box => {
+          if (box.classList.contains('locked')) return;     // 锁死的格子：云端图不覆盖
           const hit = map[Number(box.dataset.ix)];
           if (hit && hit.url) setBoxImg(box, hit.url);
         });
@@ -1175,6 +1177,7 @@
     gal.addEventListener('click', (e) => {
       const box = e.target.closest('.gbox');
       if (!box) return;
+      if (box.classList.contains('locked')) return;         // 锁死的格子：不看云端的，也不许换
       // ✕ 角标：删除（仅解锁态显示，天然不会在未解锁时点到）
       if (e.target.classList.contains('gx')) {
         e.stopPropagation();

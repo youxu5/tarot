@@ -183,7 +183,8 @@ const CONFIG = {
       //（'hero'=2×3头图 / 'big'=2×2 / 'wide'=2×1 / 'tall'=1×2，不填=标准格）。
       // fit 可选 'contain'（完整展现，bg 可垫底图）；不填 = 铺满裁切。
       // 雾山影醉砚海报：hero 头图格完整展现（contain），底下垫 ins 风紫纹理
-      { src: 'assets/wushan-poster.jpg', span: 'hero', fit: 'contain', bg: 'assets/ins-purple.jpg' },
+      // locked: true = 锁死这一格：云端有新图也不覆盖它，也不能被上传/删除（默认没锁）
+      { src: 'assets/wushan-poster.jpg', span: 'hero', fit: 'contain', bg: 'assets/ins-purple.jpg', locked: true },
       { src: '', span: 'big' },
       { src: '' },
       { src: '' },
