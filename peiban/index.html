@@ -61,6 +61,10 @@
     background:var(--bg);
   }
   .page.is-active{opacity:1;visibility:visible;}
+  /* 性能：非当前页的常驻动画（漂浮粒子/烟雾/蛇摆动等）全部暂停，省 GPU 省电 */
+  .page:not(.is-active) *, .page:not(.is-active) *::before, .page:not(.is-active) *::after{
+    animation-play-state:paused !important;
+  }
   /* 画廊页：全屏 iframe，无内边距 */
   #page-gallery{ padding:0; cursor:pointer; }
   #page-gallery iframe{ width:100%; height:100%; border:0; display:block; }
@@ -204,8 +208,8 @@
   }
   #smokeVeil .puff{
     position:absolute; border-radius:50%;
-    filter:blur(16px);
-    background:radial-gradient(circle at 50% 60%, #ffffff 0%, var(--mist) 52%, rgba(236,227,226,0) 74%);
+    /* 移动端性能：渐变本身已足够柔，blur(16px) 会让 4 个大块每帧重渲染，微信内核直接卡 */
+    background:radial-gradient(circle at 50% 60%, #ffffff 0%, var(--mist) 40%, rgba(236,227,226,0) 72%);
     animation:veilChurn 3.2s ease-in-out infinite alternate;
   }
   #smokeVeil .p1{ left:-18%; bottom:-16%; width:80%; height:46%; }
@@ -281,6 +285,11 @@
     position:absolute; inset:0; pointer-events:none; opacity:.55;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.42'/%3E%3C/svg%3E");
     mix-blend-mode:multiply;
+  }
+  /* 移动端性能：全屏 multiply 混合会逼着底层每帧重合成，微信内核吃不消；
+     手机上改普通混合 + 降透明度（视觉近似），序章不再卡 */
+  @media (max-width:520px){
+    .intro-grain{ mix-blend-mode:normal; opacity:.14; }
   }
   .intro-lid{position:absolute; left:0; width:100%; height:50.5%; background:#050505; transform:scaleY(0); pointer-events:none; z-index:28;}
   #lidTop{top:0; transform-origin:50% 0;}
@@ -419,12 +428,13 @@
   }
   .home-smoke i{
     position:absolute; bottom:0; left:50%; width:38px; height:38px; margin-left:-19px;
-    border-radius:50%; filter:blur(6px); opacity:0;
+    border-radius:50%; opacity:0;
+    /* 移动端性能：去掉 blur(6px)，柔边交给渐变本身（缩放动画会让 blur 每帧重渲染） */
     background:radial-gradient(circle,
-      #ffffff 0%,
-      rgba(255,255,255,.92) 42%,
-      rgba(196,199,206,.42) 68%,
-      rgba(196,199,206,0) 76%);
+      rgba(255,255,255,.96) 0%,
+      rgba(255,255,255,.88) 34%,
+      rgba(196,199,206,.38) 62%,
+      rgba(196,199,206,0) 74%);
     animation:smokeUp 5.4s linear infinite;
   }
   .home-smoke i:nth-child(2){ animation-delay:1.8s; margin-left:5px; width:30px; height:30px; }
@@ -1249,12 +1259,15 @@
     if(G && !reduce){
       var tl = G.timeline({onComplete:after});
       tl.to(kidsOf(from), {autoAlpha:0, y:-16, duration:.28, stagger:.02, ease:'power1.in'})
+        .add(function(){ from.classList.remove('is-active'); })   /* 离开的页面：常驻动画暂停 */
         .set(from, {autoAlpha:0})
         .set(to, {autoAlpha:1})
-        .add(function(){ enterPage(id); });
+        .add(function(){ to.classList.add('is-active'); enterPage(id); });
     } else {
       from.style.opacity='0'; from.style.visibility='hidden';
+      from.classList.remove('is-active');
       to.style.opacity='1'; to.style.visibility='visible';
+      to.classList.add('is-active');
       enterPage(id);
       after();
     }
