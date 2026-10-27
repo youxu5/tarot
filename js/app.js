@@ -620,6 +620,18 @@
       }
       v.src = king.cupVideo;
       v.play().catch(() => {});
+
+      // 自动播放被拦时（iOS 省电模式、部分安卓浏览器、 stricter webview）：
+      // 第一次触摸/点击就用捕获阶段补一脚 —— 捕获阶段不受页面里的 stopPropagation 干扰。
+      if (v.paused) {
+        const once2 = () => {
+          ['touchstart', 'mousedown', 'click'].forEach(ev =>
+            document.removeEventListener(ev, once2, true));
+          v.play().catch(() => {});
+        };
+        ['touchstart', 'mousedown', 'click'].forEach(ev =>
+          document.addEventListener(ev, once2, { capture: true, passive: true }));
+      }
       const toDone = () => {
         if (stage.classList.contains('done')) return;
         stage.classList.add('done', 'ready');
@@ -678,22 +690,25 @@
         if (framesDrawn > 0 || v.classList.contains('cup-fallback')) return;
         v.classList.add('cup-fallback');
         if (cv) cv.style.display = 'none';
+        // 从头播：canvas 通路废了说明前面根本没显示过，直出要把整个动画补齐
+        try { if (v.readyState >= 2) v.currentTime = 0; } catch (e) {}
+        v.play().catch(() => {});
       };
       v.addEventListener('error', useFallback, { once: true });
 
       // 播放看门狗：被自动播放策略拦下 / 加载卡住时反复重试，直到播上或结束
-      if (stage._cupWd) clearInterval(stage._cupWd);
+      // 移动端要早做决断：400ms 一轮，1.2s 没数据就重载，2.4s 还没画出帧就切直出
+      // （原来是 900ms×7≈6.3s，等那时候视频早播完了，切过去也是黑屏）
+      if (stage._cupWd) { clearInterval(stage._cupWd); stage._cupWd = 0; }
       let wdTries = 0;
       stage._cupWd = setInterval(() => {
         if (v.ended || !stage.classList.contains('live')) { clearInterval(stage._cupWd); stage._cupWd = 0; return; }
         wdTries++;
         if (v.paused) v.play().catch(() => {});
-        kickDraw();   // playing 但还没起帧循环时补一脚
-        // 5 次还没出数据：强制重新加载一遍
-        if (wdTries === 5 && v.readyState < 2) { try { v.load(); v.play().catch(() => {}); } catch (e) {} }
-        // 7 次还没画出一帧：canvas 通路废了，切直出后备
-        if (wdTries === 7 && framesDrawn <= 0) useFallback();
-      }, 900);
+        kickDraw();
+        if (wdTries === 3 && v.readyState < 2) { try { v.load(); v.play().catch(() => {}); } catch (e) {} }
+        if (wdTries === 6 && framesDrawn <= 0) useFallback();
+      }, 400);
     } else {
       // SVG 时间轴：壶 1s 入场 4.6s 演完 → 6.3s 定格，照片已浮现
       setTimeout(() => {
@@ -1716,6 +1731,10 @@
     audio.loop = true;
     audio.preload = 'auto';
     audio.volume = CONFIG.music.volume;
+    // iOS Safari：没插进 DOM 的游离 audio 元素在部分版本里根本发不出声，必须挂上去
+    audio.setAttribute('playsinline', '');
+    audio.style.cssText = 'position:absolute;left:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none';
+    document.body.appendChild(audio);
     if (CONFIG.music.src) audio.src = CONFIG.music.src;
 
     btn.addEventListener('click', () => {
@@ -1737,25 +1756,29 @@
     // ——那时用户已经点过卡牌，浏览器允许出声。万一仍被拦，退回
     // "下一次点击就开始"的兜底。
     if (CONFIG.music.src && CONFIG.music.autoplay) {
-      const tryPlay = () =>
-        audio.play().then(() => btn.classList.add('playing')).catch(() => {
-          const kick = () => {
-            document.removeEventListener('pointerdown', kick);
-            tryPlay();
-          };
-          document.addEventListener('pointerdown', kick);
-        });
-      document.addEventListener('cuilu:music-start', tryPlay, { once: true });
-
-      // 微信内置浏览器：桥就绪后，等用户第一次触摸再起播（iOS 微信必须这样才出声，
-      // 且不抢在首页就响——原来的节奏是走到翻牌页才唱）
-      const wechatKick = () => {
-        const once = () => {
-          ['touchstart', 'click'].forEach(ev => document.removeEventListener(ev, once));
+      // 被自动播放策略拒了之后，把「下一次触摸/点击再试」挂到捕获阶段：
+      // 页面里有大量 stopPropagation，冒泡阶段的监听会被它们吃掉，捕获阶段不会。
+      const armGesture = () => {
+        const kick = () => {
+          ['touchstart', 'mousedown', 'pointerdown', 'click'].forEach(ev =>
+            document.removeEventListener(ev, kick, true));
           tryPlay();
         };
-        ['touchstart', 'click'].forEach(ev =>
-          document.addEventListener(ev, once, { once: true, passive: true }));
+        ['touchstart', 'mousedown', 'pointerdown', 'click'].forEach(ev =>
+          document.addEventListener(ev, kick, { capture: true, passive: true }));
+      };
+      const tryPlay = () =>
+        audio.play().then(() => btn.classList.add('playing')).catch(() => armGesture());
+
+      document.addEventListener('cuilu:music-start', tryPlay, { once: true });
+
+      // 到抽牌页 + 用户已经点过牌，直接先试一次
+      document.addEventListener('cuilu:music-start', () => { armGesture(); }, { once: true });
+
+      // 微信内置浏览器：桥就绪后先试一次，不行再等用户第一次触摸
+      const wechatKick = () => {
+        tryPlay();
+        armGesture();
       };
       if (typeof WeixinJSBridge !== 'undefined' && WeixinJSBridge.invoke) wechatKick();
       else document.addEventListener('WeixinJSBridgeReady', wechatKick, { once: true });

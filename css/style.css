@@ -2074,23 +2074,24 @@ body.scroll-page .music-bird { bottom: 24%; }
 .cup-photo-text.show { display: flex; }
 /* 隐藏的视频源：画面经 canvas 抠黑后展示，video 本体只负责解码 */
 .cup-video-src {
+  /* 留在视口内、只压到近乎透明：
+     移出屏幕 / opacity:0 / display:none 都会让部分移动内核跳过解码，
+     canvas 就一帧也拿不到，金杯整个消失。0.01 基本肉眼不可见。 */
   position: absolute;
-  left: -9999px;      /* 移出屏幕但保持正常尺寸：2px 隐藏元素会被部分浏览器跳过解码 */
-  top: 0;
-  width: 320px;
-  height: 168px;
-  opacity: 0;
-  pointer-events: none;
-}
-/* canvas 抠像失败时的后备：视频直出 + 混合模式抠黑 */
-.cup-video-src.cup-fallback {
-  left: 0;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: contain;
+  opacity: .01;
+  pointer-events: none;
+  z-index: 1;
+}
+/* canvas 抠像失败时的后备：视频直出 + 混合模式抠黑 */
+.cup-video-src.cup-fallback {
   opacity: 1;
   mix-blend-mode: screen;
-  z-index: 3;
+  -webkit-mix-blend-mode: screen;   /* iOS Safari 要带前缀 */
+  z-index: 5;
 }
 /* 哥特饰件：顶部尖拱 + 四角花刺 */
 .cp-crest {
