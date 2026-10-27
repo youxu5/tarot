@@ -2028,6 +2028,26 @@
     } else { start(); }   /* 预播已在放：直接归零从头出声 */
   }
 
+  /* 自然播完不戛然而止：结尾 1.8 秒渐弱作尾音，静默 2.5 秒后从头再循环（不用 bgm.loop 硬循环） */
+  var FADE_END_S = 1.8, GAP_MS = 2500, BGM_VOL = .3;
+  bgm.addEventListener('timeupdate', function(){
+    if(!musicOn || bgm.paused || !isFinite(bgm.duration) || bgm.duration <= 0) return;
+    var left = bgm.duration - bgm.currentTime;
+    if(left <= FADE_END_S){
+      try{ bgm.volume = Math.max(0, BGM_VOL * (left / FADE_END_S)); }catch(e){}
+    }
+  });
+  bgm.addEventListener('ended', function(){
+    try{ bgm.volume = 0; }catch(e){}
+    setTimeout(function(){
+      if(!musicOn) return;
+      try{ bgm.currentTime = 0; }catch(e){}
+      try{ bgm.volume = BGM_VOL; }catch(e){}
+      var pr = bgm.play();
+      if(pr && pr.catch) pr.catch(function(){});
+    }, GAP_MS);
+  });
+
   /* 音量渐变：关闭音乐时不戛然而止，留 2 秒尾音；开启时 0.9 秒淡入 */
   var fadeTimer = null;
   function fadeBgm(to, dur){
