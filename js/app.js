@@ -1993,7 +1993,8 @@
     const btn = $('#music-bird');
     const audio = new Audio();
     audio.loop = true;
-    audio.preload = 'auto';
+    // 首屏不为音乐买单：preload=none，等用户点小鸟或进入占卜页才开始下载 790KB
+    audio.preload = 'none';
     audio.volume = CONFIG.music.volume;
     // iOS Safari：没插进 DOM 的游离 audio 元素在部分版本里根本发不出声，必须挂上去
     audio.setAttribute('playsinline', '');
@@ -2020,6 +2021,17 @@
     // ——那时用户已经点过卡牌，浏览器允许出声。万一仍被拦，退回
     // "下一次点击就开始"的兜底。
     if (CONFIG.music.src && CONFIG.music.autoplay) {
+      // 首屏先不下载音频（preload=none），等用户第一次触摸再悄悄预载：
+      // 这样既不抢首屏带宽，等走到翻牌页要出声时音乐已经缓冲好了。
+      const warmUp = () => {
+        try {
+          audio.preload = 'auto';
+          audio.load();
+        } catch (e) { /* 预载失败不影响后续播放 */ }
+      };
+      ['touchstart', 'mousedown', 'pointerdown', 'click'].forEach(ev =>
+        document.addEventListener(ev, warmUp, { capture: true, passive: true, once: true }));
+
       // 被自动播放策略拒了之后，把「下一次触摸/点击再试」挂到捕获阶段：
       // 页面里有大量 stopPropagation，冒泡阶段的监听会被它们吃掉，捕获阶段不会。
       const armGesture = () => {
