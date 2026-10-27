@@ -765,97 +765,102 @@
    * 目的：老板上传的照片传到云端，所有访客刷新就能看到最新那张。
    * 任何一步失败都自动退回本机模式，不报错、不白屏。
    */
+  /* ---------- 云端槽位（WorkBuddy 云服务） ----------
+   * 对外接口不变：init / ready / load / loadAll / save / remove
+   * 读：公开读（访客无需登录）；写：走云端函数，服务端再校验一次口令。
+   * 任何一步失败都返回 null / 抛错，由调用方降级到本机，页面永不白屏。
+   */
   const Cloud = (() => {
-    let cfg = null, on = false;
+    let cfg = null, cloud = null, on = false;
+
     function init(c) {
-      try { cfg = c || null; on = !!(cfg && cfg.url && cfg.anonKey && cfg.bucket); }
-      catch (e) { on = false; }
-    }
-    function ready() { return on; }
-    function hdr(extra) {
-      const h = { apikey: cfg.anonKey, Authorization: 'Bearer ' + cfg.anonKey };
-      if (extra) for (const k in extra) h[k] = extra[k];
-      return h;
-    }
-    async function go(url, opt, ms) {
-      const ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-      let tm = null;
-      if (ctl) tm = setTimeout(() => { try { ctl.abort(); } catch (e) {} }, ms || 6000);
       try {
-        const o = Object.assign({}, opt || {});
-        if (ctl) o.signal = ctl.signal;
-        return await fetch(url, o);
-      } finally { if (tm) clearTimeout(tm); }
+        cfg = c || null;
+        const G = (typeof window !== 'undefined') ? window.WorkBuddyCloud : null;
+        on = !!(cfg && cfg.endpoint && cfg.publishableKey && G && G.createWorkBuddyCloud);
+        if (on) {
+          cloud = G.createWorkBuddyCloud({
+            endpoint: cfg.endpoint,
+            oauthRelayBaseUrl: cfg.oauthRelayBaseUrl,
+            publishableKey: cfg.publishableKey
+          });
+        }
+      } catch (e) { on = false; cloud = null; }
     }
-    const D = () => ({ page: cfg.page, key: cfg.key, ix: cfg.ix });
-    const file = (s) => s.page + '-' + s.key + '-' + s.ix + '.jpg';
-    const pub = (s, rev) => cfg.url + '/storage/v1/object/public/' + cfg.bucket + '/' + file(s) + '?v=' + (rev || 0);
+
+    function ready() { return on && !!cloud; }
+
+    function slotOf(s) {
+      return {
+        page: (cfg && cfg.page) || 'cuiyulu',
+        key: (s && s.key) || (cfg && cfg.key) || 'cup',
+        ix: Number((s && s.ix) || 0)
+      };
+    }
+
+    function toDataUrl(p) {                       // 存进数据库的是 dataURL 字符串
+      if (typeof p === 'string') return Promise.resolve(p);
+      return new Promise((res, rej) => {
+        const fr = new FileReader();
+        fr.onload = () => res(String(fr.result || ''));
+        fr.onerror = () => rej(new Error('图片读取失败'));
+        fr.readAsDataURL(p);
+      });
+    }
 
     async function load(slot) {
-      if (!on) return null;
-      const s = slot || D();
+      if (!ready()) return null;
+      const s = slotOf(slot);
       try {
-        const q = cfg.url + '/rest/v1/slot_images?select=url,rev&page=eq.' + encodeURIComponent(s.page)
-          + '&key=eq.' + encodeURIComponent(s.key) + '&ix=eq.' + s.ix;
-        const r = await go(q, { headers: hdr() }, 5000);
-        if (!r.ok) return null;
-        const j = await r.json();
-        if (!j || !j.length || !j[0].rev) return null;
-        return { url: pub(s, j[0].rev), rev: j[0].rev };
+        const r = await cloud.database.from('cuiyu_slots')
+          .select('url,rev')
+          .eq('page', s.page).eq('key', s.key).eq('ix', s.ix)
+          .maybeSingle();
+        if (r.error || !r.data || !r.data.url) return null;
+        return { url: r.data.url, rev: r.data.rev || 0 };
       } catch (e) { return null; }
     }
 
-    /* 拉某一类槽位的全部格子（如画廊 gal → { 0:{url,rev}, 1:{...} … }） */
     async function loadAll(key) {
-      if (!on) return null;
+      if (!ready()) return null;
+      const k = key || (cfg && cfg.key) || 'cup';
       try {
-        const q = cfg.url + '/rest/v1/slot_images?select=ix,url,rev&page=eq.' + encodeURIComponent(cfg.page)
-          + '&key=eq.' + encodeURIComponent(key);
-        const r = await go(q, { headers: hdr() }, 6000);
-        if (!r.ok) return null;
-        const j = await r.json();
+        const r = await cloud.database.from('cuiyu_slots')
+          .select('ix,url,rev')
+          .eq('page', (cfg && cfg.page) || 'cuiyulu').eq('key', k);
+        if (r.error || !r.data) return null;
         const map = {};
-        (j || []).forEach(row => {
-          if (row.rev) map[row.ix] = { url: pub({ page: cfg.page, key: key, ix: row.ix }, row.rev), rev: row.rev };
-        });
+        (r.data || []).forEach(row => { if (row.url) map[row.ix] = { url: row.url, rev: row.rev || 0 }; });
         return map;
       } catch (e) { return null; }
     }
 
-    async function save(blob, slot) {
-      if (!on) throw new Error('no cloud');
-      const s = slot || D();
+    async function save(payload, slot) {
+      if (!ready()) throw new Error('云端未就绪');
+      const s = slotOf(slot);
+      const url = await toDataUrl(payload);
+      if (url.length > 1800000) throw new Error('图片太大（压缩后仍超 1.3MB），换一张小一点的');
       const rev = Date.now();
-      const putOpt = {
-        method: 'PUT',
-        headers: hdr({ 'Content-Type': 'image/jpeg', 'x-upsert': 'true', 'cache-control': '3600' }),
-        body: blob
-      };
-      let up = await go(cfg.url + '/storage/v1/object/' + cfg.bucket + '/' + file(s), putOpt, 20000);
-      if (!up.ok) {                       // 部分版本首次写入只认 POST
-        up = await go(cfg.url + '/storage/v1/object/' + cfg.bucket + '/' + file(s),
-          Object.assign({}, putOpt, { method: 'POST' }), 20000);
-      }
-      if (!up.ok) throw new Error('storage ' + up.status);
-      const row = await go(cfg.url + '/rest/v1/slot_images', {
-        method: 'POST',
-        headers: hdr({ 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' }),
-        body: JSON.stringify({ page: s.page, key: s.key, ix: s.ix, url: pub(s, rev), rev: rev })
-      }, 8000);
-      if (!row.ok) throw new Error('db ' + row.status);
-      return { url: pub(s, rev), rev: rev };
+      const r = await cloud.database.rpc('cuiyu_set_slot', {
+        p_passcode: (cfg && cfg.passcode) || '520',
+        p_page: s.page, p_key: s.key, p_ix: s.ix,
+        p_url: url, p_rev: rev
+      });
+      if (r.error) throw new Error(r.error.message || '云端写入失败');
+      return { url: url, rev: rev };
     }
 
-    function remove(slot) {               // 删云端：失败就算了，不影响本机清除
-      if (!on) return Promise.resolve();
-      const s = slot || D();
-      return Promise.all([
-        go(cfg.url + '/storage/v1/object/' + cfg.bucket + '/' + file(s), { method: 'DELETE', headers: hdr() }, 8000).catch(() => {}),
-        go(cfg.url + '/rest/v1/slot_images?page=eq.' + encodeURIComponent(s.page)
-          + '&key=eq.' + encodeURIComponent(s.key) + '&ix=eq.' + s.ix,
-          { method: 'DELETE', headers: hdr() }, 8000).catch(() => {})
-      ]);
+    async function remove(slot) {
+      if (!ready()) return;
+      const s = slotOf(slot);
+      try {
+        await cloud.database.rpc('cuiyu_del_slot', {
+          p_passcode: (cfg && cfg.passcode) || '520',
+          p_page: s.page, p_key: s.key, p_ix: s.ix
+        });
+      } catch (e) { /* 删不掉也不影响本机清除 */ }
     }
+
     return { init, ready, load, loadAll, save, remove };
   })();
 
@@ -871,7 +876,7 @@
           c.width = Math.max(1, Math.round(im.width * s));
           c.height = Math.max(1, Math.round(im.height * s));
           c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
-          c.toBlob(b => b ? resolve({ blob: b, dataUrl: c.toDataURL('image/jpeg', .85) }) : reject(new Error('toBlob 失败')), 'image/jpeg', .85);
+          c.toBlob(b => b ? resolve({ blob: b, dataUrl: c.toDataURL('image/jpeg', .78) }) : reject(new Error('toBlob 失败')), 'image/jpeg', .78);
         };
         im.onerror = () => reject(new Error('图片读取失败'));
         im.src = String(fr.result || '');
@@ -912,7 +917,7 @@
     };
 
     // 云端优先：拉到就用云端那张，保证所有人看到的是同一张
-    Cloud.init((typeof CONFIG !== 'undefined' && CONFIG.supabase) || null);
+    Cloud.init((typeof CONFIG !== 'undefined' && CONFIG.cloud) || null);
     if (Cloud.ready()) {
       setStatus('正在同步…');
       Cloud.load().then(hit => {
@@ -1142,10 +1147,25 @@
     box.classList.remove('empty');
     box.classList.add('has-img');
   }
+  /* 格子里闪一句小字（同步成功/失败），1.6 秒后自己消失，平时不露 */
+  function flashBox(box, text) {
+    if (!box) return;
+    let el = box.querySelector('.gflash');
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'gflash';
+      box.appendChild(el);
+    }
+    el.textContent = text;
+    box.classList.add('show-flash');
+    clearTimeout(box._flashT);
+    box._flashT = setTimeout(() => box.classList.remove('show-flash'), 1600);
+  }
+
   function setupGalleryUpload() {
     const gal = $('#chapter-gallery');
     if (!gal) return;
-    Cloud.init((typeof CONFIG !== 'undefined' && CONFIG.supabase) || null);
+    Cloud.init((typeof CONFIG !== 'undefined' && CONFIG.cloud) || null);
 
     // 开页拉云端：谁的槽位有图就铺谁的（覆盖静态配置图）
     if (Cloud.ready()) {
@@ -1175,15 +1195,15 @@
       const box = pendingBox;
       pendingBox = null;
       if (!f || !box) return;
-      compressToJpeg(f, 1100).then(r => {
+      compressToJpeg(f, 900).then(r => {
         setBoxImg(box, URL.createObjectURL(r.blob));
-        const sb = (typeof CONFIG !== 'undefined' && CONFIG.supabase) || {};
+        const sb = (typeof CONFIG !== 'undefined' && CONFIG.cloud) || {};
         const slot = { page: sb.page, key: 'gal', ix: Number(box.dataset.ix) };
         if (!Cloud.ready()) return;
         box.classList.add('uploading');
         Cloud.save(r.blob, slot)
-          .then(hit => setBoxImg(box, hit.url))
-          .catch(err => console.warn('[画廊上传失败]', err))
+          .then(hit => { setBoxImg(box, hit.url); flashBox(box, '已同步 ✓'); })
+          .catch(err => { console.warn('[画廊上传失败]', err); flashBox(box, '没传上去 · 只在本机'); })
           .finally(() => box.classList.remove('uploading'));
       }).catch(err => console.warn('[画廊压缩失败]', err));
     });
@@ -1196,7 +1216,7 @@
       // ✕ 角标：删除（仅解锁态显示，天然不会在未解锁时点到）
       if (e.target.classList.contains('gx')) {
         e.stopPropagation();
-        const sb = (typeof CONFIG !== 'undefined' && CONFIG.supabase) || {};
+        const sb = (typeof CONFIG !== 'undefined' && CONFIG.cloud) || {};
         const slot = { page: sb.page, key: 'gal', ix: Number(box.dataset.ix) };
         const img = box.querySelector('img');
         if (img) img.removeAttribute('src');

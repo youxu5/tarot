@@ -6,19 +6,20 @@
 
 const CONFIG = {
 
-  /* ---------- 云端同步（Supabase） ----------
+  /* ---------- 云端同步（WorkBuddy 云服务） ----------
    * 用途：老板上传的照片不再只存他自己的手机，
-   * 而是传到云端，任何访客刷新都能看到最新那张。
-   * 网络不畅时会自动退回本机模式，照片不会白屏、不会丢。
-   * 不想用就把 url 清空即可（页面立刻回到本机模式）。
+   * 而是传到云端，任何访客刷新都能看到最新那张 —— 访客不需要登录。
+   * 上传入口仍是隐藏的（连点 5 次 + 口令），写入时云端会再校验一次口令。
+   * 网络不畅时自动退回本机模式，照片不会白屏、不会丢。
    */
-  supabase: {
-    url: 'https://udbtfhwmtlylkcolxmhf.supabase.co',
-    anonKey: 'sb_publishable_F0nSwoHFgsPRMh4n8HCBVg__M8lgts1',
-    bucket: 'slot-imgs',
+  cloud: {
+    endpoint: 'https://emerald-tablet-tarot.app.workbuddy.host',
+    oauthRelayBaseUrl: 'https://www.workbuddy.cn/v2/as/genie-baas/oauth',
+    publishableKey: 'wbpk_p7SWMhcRww37VUgFTI1xc3_w81WiVKdg0hMWogQoB8WcX5Ki3Pc7tVG',
     page: 'cuiyulu',   // 站点标识，避免和其他项目抢同一个槽位
-    key: 'cup',        // 槽位名（圣杯页照片）
-    ix: 0
+    key: 'cup',        // 默认槽位名（圣杯页照片）
+    ix: 0,
+    passcode: '520'    // 与页面上的隐藏上传口令一致，云端二次校验用
   },
 
   /* ---------- 第一页：首页 ---------- */

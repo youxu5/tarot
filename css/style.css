@@ -2815,3 +2815,22 @@ body.scroll-page .music-bird { bottom: 24%; }
 /* 锁死的格子：解锁态也不显示 ✕、不给手型光标 */
 .chapter-gallery.unlocked .gbox.locked .gx { display: none; }
 .chapter-gallery.unlocked .gbox.locked { cursor: default; }
+
+/* 画廊格子：同步成功/失败的小字提示（默认不露，1.6s 后自己消失） */
+.chapter-gallery .gbox .gflash {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 5px;
+  text-align: center;
+  font-size: 10px;
+  letter-spacing: .06em;
+  color: #efe8ff;
+  text-shadow: 0 1px 5px rgba(0, 0, 0, .7);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity .3s ease, transform .3s ease;
+  pointer-events: none;
+  z-index: 5;
+}
+.chapter-gallery .gbox.show-flash .gflash { opacity: 1; transform: translateY(0); }
