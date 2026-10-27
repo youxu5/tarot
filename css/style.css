@@ -530,7 +530,7 @@ html, body {
   position: absolute;
   inset: 0;
   /* 东欧冷冬背景图：模糊 + 雾化压暗，融入神秘氛围 */
-  background: url('../assets/winter.jpg') center / cover no-repeat;
+  background: url('../assets/winter.jpg?v=3') center / cover no-repeat;
   filter: blur(6px) saturate(.8) brightness(.78);
   transform: scale(1.07); /* 放大遮住模糊边缘 */
 }
@@ -973,7 +973,7 @@ html, body {
   position: absolute;
   inset: 0;
   z-index: 0;
-  background: url('../assets/winter.jpg?v=2') center / cover no-repeat;
+  background: url('../assets/winter.jpg?v=3') center / cover no-repeat;
   opacity: 0;
   transition: opacity .8s ease;
   pointer-events: none;
@@ -1245,7 +1245,7 @@ html, body {
 
 /* 卷 I 页专用背景：燃烧的羊皮纸手稿（插画版） */
 .chapter-bg {
-  background-image: url('../assets/burn.jpg');
+  background-image: url('../assets/burn.jpg?v=3');
   filter: blur(3px) saturate(.85) brightness(.66);
 }
 
@@ -1701,7 +1701,7 @@ body.scroll-page .music-bird { bottom: 24%; }
   /* 东欧冷冬实景 + 一层薄冷灰压暗（太重会盖掉雪景） */
   background:
     linear-gradient(180deg, rgba(28, 30, 40, .24) 0%, rgba(20, 22, 30, .32) 100%),
-    url('../assets/winter.jpg') center / cover no-repeat;
+    url('../assets/winter.jpg?v=3') center / cover no-repeat;
 }
 .sword-scene {
   position: absolute;
