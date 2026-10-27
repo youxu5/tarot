@@ -60,10 +60,56 @@
     document.documentElement.style.setProperty('--frost-ms', f.ms + 'ms');
   }
 
+  /* ---------- 按需加载：进哪一页，才下载哪一页的图 ----------
+     6 个页面只有 1 个是显示着的，但 HTML 里的 <img> 一解析就会发请求，
+     等于首屏要替后面 5 页垫掉近 1MB 图片。
+     所以 HTML 里只写 data-src，真正进这页时才把 src 补上。 */
+  function wakeImages(scope) {
+    if (!scope) return;
+    scope.querySelectorAll('[data-bg]').forEach((el) => {
+      el.style.background = el.getAttribute('data-bg');
+      el.removeAttribute('data-bg');
+    });
+    scope.querySelectorAll('img[data-src]').forEach((im) => {
+      const u = im.getAttribute('data-src');
+      if (!u) return;
+      im.removeAttribute('data-src');
+      im.src = u;                 // 之前预取过的话这里直接命中缓存
+      im.decode && im.decode().catch(() => {});   // 提前解码，避免上场时卡一帧
+    });
+  }
+  /* 悄悄预取：只下载，不塞进 DOM。供「下一页」提前备好，切过去就是现成的 */
+  function prefetchImages(id, delay) {
+    setTimeout(() => {
+      const p = $(id);
+      if (!p) return;
+      p.querySelectorAll('img[data-src]').forEach((im) => {
+        const u = im.getAttribute('data-src');
+        if (u) { const i = new Image(); i.src = u; }
+      });
+    }, delay);
+  }
+  /* 切页前的准备：先恢复渲染（content-visibility 从 hidden 放开），
+     再把这页的图挂上。不做的话淡入的第一帧是空的。 */
+  function prepPage(id) {
+    const p = $(id);
+    if (!p) return null;
+    p.classList.add('waking');
+    wakeImages(p);
+    if (id === '#page-reveal') wakeImages($('#music-bird'));   // 音乐鸟从翻牌页才出现
+    // 圣杯页：这页刚从"不渲染"放开，等一帧让浏览器排完版，再量照片位置
+    const cup = p.querySelector('.cups-stage');
+    if (cup) requestAnimationFrame(() => layoutCupTail(cup));
+    return p;
+  }
+
   /* ---------- 页面切换 ---------- */
   function showPage(id, keepFx) {
     if (!keepFx) stopBurnFx();   // 切页时强制收掉燃烧粒子（燃烧跳转下一页时保留余烬）
     const prevId = document.querySelector('.page.active') ? document.querySelector('.page.active').id : null;
+    prepPage(id);
+    // 站定之后再撤掉预热标记，让其它页的装饰动画保持停摆
+    setTimeout(() => { const p = $(id); if (p) p.classList.remove('waking'); }, 1200);
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     $(id).classList.add('active');
     if (id === '#page-scroll') enterScroll();   // 进入羊皮纸页：复位 + 格子线浮现
@@ -90,6 +136,21 @@
     // 羊皮纸页的返回按钮挪到了左下角：给 body 挂个标记，让乌鸦站到按钮上方别叠住
     document.body.classList.toggle('scroll-page', id === '#page-scroll');
     if (id === '#page-reveal') document.dispatchEvent(new Event('cuilu:music-start'));
+    /* 站定后悄悄备货：① 下一页的 <img>（data-src 那批）
+       ② 本页/下页的 CSS 大背景图 —— 它们只在页 active 时才铺，
+          不提前拉的话切过去要先白一下再出图 */
+    const BG_PRELOAD = {
+      '#page-home':     ['assets/home-window.jpg'],
+      '#page-draw':     ['assets/winter.jpg?v=3'],
+      '#page-reveal':   ['assets/burn.jpg?v=3'],
+      '#page-chapter1': ['assets/parchment-fire.jpg', 'assets/parchment-clean.jpg', 'assets/back-ornament-metal.png?v=1', 'assets/winter.jpg?v=3'],
+      '#page-scroll':   ['assets/winter.jpg?v=3'],
+      '#page-sword':    ['assets/winter.jpg?v=3'],
+    };
+    if (id === '#page-home') prefetchImages('#page-draw', 1500);
+    if (id === '#page-draw') prefetchImages('#page-reveal', 1200);
+    if (id === '#page-reveal') { prefetchImages('#page-scroll', 1500); prefetchImages('#page-sword', 3000); }
+    (BG_PRELOAD[id] || []).forEach((u) => setTimeout(() => { const i = new Image(); i.src = u; }, 1200));
   }
 
   /* ============================================================
@@ -189,9 +250,9 @@
       el.className = 'tcard';
       el.innerHTML =
         '<div class="tcard-inner">' +
-          '<div class="tcard-face back"><img src="assets/back.jpg" alt="牌背"></div>' +
+          '<div class="tcard-face back"><img data-src="assets/back.jpg" alt="牌背"></div>' +
           '<div class="tcard-face front">' +
-            '<img src="' + c.img + '" alt="' + c.name + '">' +
+            '<img data-src="' + c.img + '" alt="' + c.name + '">' +
             '<div class="tcard-name">' +
               '<div class="cn">' + c.name + '</div>' +
               '<div class="en">' + c.en + '</div>' +
@@ -762,16 +823,19 @@
     const up = stage.querySelector('.cup-upload');
     if (!ph || !gap || !up) return;
     // CSS 里照片是 top:33% + translateY(-50%)，视觉底边 = offsetTop + 半高
-    let y = ph.offsetTop + ph.offsetHeight / 2 + 28;
+    // 先一口气读完三个高度，再一口气写回 —— 读写交替会让浏览器每步都强制重排
+    const phBottom = ph.offsetTop + ph.offsetHeight / 2;
+    if (!phBottom) return;   // 这页还没渲染（content-visibility），量不出来，等下一次
+    const gapH = gap.offsetHeight;
+    const y = phBottom + 28;
     gap.style.top = y + 'px';
-    y += gap.offsetHeight + 30;
-    up.style.top = y + 'px';
+    up.style.top = (y + gapH + 30) + 'px';
   }
-  /* 三次兜底重排：图片加载完、字体加载完、出场动画收尾各一次，
-     因为这三件事都会让照片或句子的高度变。 */
+  /* 两次兜底重排：入场动画收尾 + 图片加载完各一次，
+     因为这两件事都会让照片或句子的高度变。 */
   function scheduleCupTail(stage) {
     layoutCupTail(stage);
-    [80, 400, 1700].forEach(ms => setTimeout(() => layoutCupTail(stage), ms));
+    [400, 1700].forEach(ms => setTimeout(() => layoutCupTail(stage), ms));
     if (document.fonts && document.fonts.ready) {
       document.fonts.ready.then(() => layoutCupTail(stage)).catch(() => {});
     }
@@ -1369,12 +1433,12 @@
       box.dataset.ix = ix;                        // 云端槽位号：cuiyulu-gal-<ix>
       if (item.locked) box.classList.add('locked');   // 锁死：云端永远覆盖不了它
       // 底图：照片没铺满框时露出的背景（比如 ins 风紫纹理）
-      if (item.bg) box.style.background = 'center / cover no-repeat url("' + item.bg + '?v=2")';
+      // 都只登记不下载：进了这一页 wakeImages 才真正铺上，否则首屏要替它垫 200 多 KB
+      if (item.bg) box.dataset.bg = 'center / cover no-repeat url("' + item.bg + '?v=2")';
       if (item.src) {
         const img = document.createElement('img');
-        img.src = item.src;
+        img.dataset.src = item.src;
         img.alt = '';
-        img.loading = 'lazy';
         box.appendChild(img);
       } else {
         box.classList.add('empty');

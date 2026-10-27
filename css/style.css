@@ -111,7 +111,20 @@ html, body {
   transition: opacity .8s ease, visibility .8s;
   overflow: hidden;
 }
-.page.active { opacity: 1; visibility: visible; }
+.page.active { opacity: 1; visibility: visible; content-visibility: visible; }
+
+/* 非当前页：整棵子树直接跳过渲染。
+   原来 6 个页面全部 position:fixed 常驻在视口内，只是 opacity:0 藏着——
+   于是 17 个 infinite 装饰动画、20 多张背景图、大面积 backdrop-filter
+   在后台同时干活，首屏和切页都在掉帧。
+   content-visibility:hidden 让浏览器彻底不渲染这棵子树：
+   图片不下载、动画不跑、不建合成层。切页时才一次性渲染。
+   .waking 是切页前 80ms 加的预热类：先悄悄渲染好，避免淡入第一帧是空的。 */
+.page:not(.active) { content-visibility: hidden; }
+.page.waking { content-visibility: visible; }
+/* 兜底：不支持 content-visibility 的浏览器（iOS 18 以下的 Safari），
+   至少让常驻装饰动画停下来，别在后台空转烧 CPU */
+.page:not(.active):not(.waking) * { animation-play-state: paused; }
 
 /* ============================================================
  * 第一页 · 首页
@@ -547,11 +560,13 @@ html, body {
 .reveal-bg {
   position: absolute;
   inset: 0;
-  /* 东欧冷冬背景图：模糊 + 雾化压暗，融入神秘氛围 */
-  background: url('../assets/winter.jpg?v=3') center / cover no-repeat;
+  /* 东欧冷冬背景图：模糊 + 雾化压暗，融入神秘氛围
+     图只在翻到这一页时才铺（135KB 不在首屏垫着），切过来时由 JS 预取过，基本秒出 */
+  background: center / cover no-repeat;
   filter: blur(6px) saturate(.8) brightness(.78);
   transform: scale(1.07); /* 放大遮住模糊边缘 */
 }
+.page.active .reveal-bg { background-image: url('../assets/winter.jpg?v=3'); }
 .reveal-bg::before, .reveal-bg::after {
   content: '';
   position: absolute;

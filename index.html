@@ -10,7 +10,7 @@
 <meta property="og:description" content="翻开翠玉录，抽一张属于你的塔罗。">
 <meta property="og:image" content="assets/home.jpg">
 <meta name="theme-color" content="#0d1420">
-<link rel="stylesheet" href="css/style.css?v=45">
+<link rel="stylesheet" href="css/style.css?v=46">
 </head>
 <body>
 
@@ -41,11 +41,9 @@
   <div class="avatar-wrap">
     <div id="avatar" class="avatar">
       <div class="avatar-core">
-        <img src="assets/avatar-boy.jpg?v=1" alt="avatar">
+        <img data-src="assets/avatar-boy.jpg?v=1" alt="avatar">
       </div>
     </div>
-  </div>
-    </div    </div>
   </div>
 
   <!-- 淡紫金属六芒星 · 抽牌按钮 -->
@@ -188,7 +186,7 @@
   <!-- 星币国王弹窗：蓝白浮雕椭圆画框（点币堆后由小到大弹出，点任意处收回） -->
   <div id="pentacles-pop" class="pentacles-pop" aria-hidden="true">
     <div class="pentacles-frame">
-      <img class="pentacles-frame-img" src="assets/pentacles-frame.png" alt="">
+      <img class="pentacles-frame-img" data-src="assets/pentacles-frame.png" alt="">
       <!-- 星币币面共用金色渐变 -->
       <svg width="0" height="0" style="position:absolute" aria-hidden="true">
         <defs>
@@ -347,7 +345,7 @@
     <!-- 顶层：修复干净的羊皮纸（初始只见这张，点燃时淡出） -->
     <div class="scroll-clean"></div>
     <!-- 纸面正中的心形花纹：像直接印在羊皮纸上的一枚纹章水印 -->
-    <img class="scroll-ornament" src="assets/heart-ornament.png" alt="">
+    <img class="scroll-ornament" data-src="assets/heart-ornament.png" alt="">
     <div class="scroll-dim"></div>
     <!-- 右侧一行一行浮现的横线（行数在 config.js 的 scroll.lineCount） -->
     <div id="scroll-lines" class="scroll-lines"></div>
@@ -359,7 +357,7 @@
 
   <!-- 左上角权杖图片框：先浮现，点击点燃羊皮纸 -->
   <button id="wand" class="wand" type="button" title="点燃羊皮纸">
-    <img src="assets/wand-ink.png" alt="权杖印纹">
+    <img data-src="assets/wand-ink.png" alt="权杖印纹">
   </button>
 
   <!-- 右上角对话：权杖浮现之后出现 -->
@@ -378,13 +376,13 @@
   <div class="sword-scene">
     <!-- 整体的灰紫巴洛克画框：剑和左右文字位都在框内开孔里 -->
     <div class="sword-frame-wrap">
-      <img class="sword-frame-img" src="assets/frame-graypurple.png" alt="">
+      <img class="sword-frame-img" data-src="assets/frame-graypurple.png" alt="">
       <div class="sword-opening">
         <div class="sword-veil"></div>
         <div class="sword-panel sword-panel-l"></div>
         <div class="sword-panel sword-panel-r"></div>
         <!-- 银色雕花宝剑（剑尖向下），寒光自上而下现身 -->
-        <img class="sword-art" src="assets/sword-ornate.png" alt="宝剑">
+        <img class="sword-art" data-src="assets/sword-ornate.png" alt="宝剑">
         <!-- 剑尖下方的两行誓词 -->
         <div id="sword-vow" class="sword-vow"></div>
       </div>
@@ -398,7 +396,7 @@
 <!-- ================= 全局 · 左下角音乐鸟 ================= -->
 <button id="music-bird" class="music-bird" type="button" title="音乐">
   <!-- 直接用抠好的紫色鸟（透明背景） -->
-  <img src="assets/bird-real.png" alt="音乐鸟">
+  <img data-src="assets/bird-real.png" alt="音乐鸟">
 </button>
 
 <!-- 燃烧粒子画布：全屏固定层，只在烧毁时启用 -->
@@ -409,10 +407,11 @@
 
 <!-- 云 SDK 用本地副本：原来走 jsdelivr CDN，它一卡（国内时通时断）
      后面所有脚本都被同步阻塞住，页面事件迟迟绑不上，点什么都没反应 -->
-<script src="js/cloud-sdk.js?v=1" onerror="window.__wbSdkFailed=1"></script>
+<!-- WorkBuddy 云 SDK 不再首屏加载：云端模块自己会在真要用到时再拉（省 71KB）。
+     当前默认走 Supabase 通道，纯 fetch，一个 SDK 都不需要 -->
 <script src="js/config.js?v=15"></script>
 <script src="js/cards.js"></script>
-<script src="js/app.js?v=20"></script>
+<script src="js/app.js?v=21"></script>
 <!-- UI 元素位置/大小调试面板：按 P 键或点右下角 ⚙ 打开。发布前删掉这一行即可隐藏 -->
 </body>
 </html>
