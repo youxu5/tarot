@@ -1083,7 +1083,9 @@
 <script>
 (function(){
   var G = window.gsap || null;
-  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  /* 演出页：强制开动效。手机系统若开了「减弱动态效果/省电模式」，prefers-reduced-motion 会为真，
+     此前会让全部动画跳过、且藏在时间轴里的 BGM 起播一并失效（手机上表现为动效音乐全没）。 */
+  var reduce = false;
   var current = 'home';
   var pages = {};
   ['home','profile','vibe','scripts','reviews','book','gallery'].forEach(function(id){
@@ -2166,12 +2168,22 @@
     });
   }
 
+  /* 手势内同步预解锁音频：iOS/安卓只认「用户手势那次同步调用」，事后回调里的 play() 会被静默拦截 */
+  function primeBgm(){
+    if(!bgm) return;
+    var pr = bgm.play();
+    if(pr && pr.then){
+      pr.then(function(){ bgm.pause(); try{ bgm.currentTime = 0; }catch(e){} }).catch(function(){});
+    }
+  }
+
   /* ---------- 开始界面：点击 → 序章（撞击时音乐起播，点击即用户手势，不会被拦截） ---------- */
   var startScr = document.getElementById('startScr');
   var gameStarted = false;
   function beginGame(){
     if(gameStarted) return;
     gameStarted = true;
+    primeBgm();   /* 必须在手势内同步调用，解锁手机端音频 */
     if(G && !reduce){
       /* 过场：微缩蓄力 → 波纹从中心扩散 → 边框与字原地安静淡出（不冲屏）→ 黑幕接序章 */
       var rings = startScr.querySelectorAll('.warp-ring');
