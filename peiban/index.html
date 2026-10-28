@@ -8,8 +8,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <!-- 非阻塞加载：fonts.googleapis.com 在大陆网络常挂起，阻塞式样式表会让页面长时间黑屏。
      media=print + onload 切换 = 异步加载，字体没到就用回退字体先渲染（font-display=swap 已开）。 -->
-<link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Long+Cang&family=Zhi+Mang+Xing&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
-<noscript><link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Long+Cang&family=Zhi+Mang+Xing&display=swap" rel="stylesheet" /></noscript>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Zhi+Mang+Xing&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+<noscript><link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Zhi+Mang+Xing&display=swap" rel="stylesheet" /></noscript>
 <style>
   :root{
     --bg:#ffffff;          /* 纯白底 */
@@ -472,11 +472,10 @@
     padding-bottom:7px;font-size:15px;letter-spacing:.1em;color:var(--fg);
   }
   .field .v.empty{color:#b4b4ae;}
-  /* 签名：书写体（网络字体加载失败时回退本地楷体/行楷），正常横排 */
+  /* 签名：正常字体（与其余字段一致） */
   .field .v.sign{
-    font-family:'Zhi Mang Xing','Long Cang','STXingkai','KaiTi','SimKai',cursive;
-    font-size:19px; letter-spacing:.06em;
-    color:#1c1c1c;
+    font-size:15px; letter-spacing:.1em;
+    color:var(--fg);
   }
   .face-wrap{ position:absolute; top:31%; left:47%; width:54%; height:42%; }
   .face-wrap .face-img{ width:100%; height:100%; object-fit:contain; display:block; }
