@@ -637,6 +637,42 @@
     object-fit:cover; display:block; cursor:pointer;
     box-shadow:0 0 0 3px #fff, 0 0 0 4px rgba(17,17,17,.22);
   }
+  /* 管理员密钥弹窗：上传/删除前验证，访客只读 */
+  .adm-veil{
+    position:absolute; inset:0; z-index:70; display:none;
+    background:rgba(10,10,10,.55); align-items:center; justify-content:center;
+  }
+  .adm-veil.show{ display:flex; }
+  .adm-card{
+    position:relative; width:74%; max-width:300px;
+    background:#fdfdfb; border:1.5px solid rgba(17,17,17,.34);
+    box-shadow:0 10px 26px rgba(0,0,0,.18);
+    padding:20px 18px 16px; text-align:center;
+  }
+  .adm-card .adm-t{
+    font-size:11px; letter-spacing:.34em; color:#111;
+    margin-bottom:13px;
+  }
+  .adm-card input{
+    display:block; width:100%; box-sizing:border-box;
+    border:none; border-bottom:1px solid rgba(17,17,17,.35);
+    background:transparent; outline:none;
+    font-size:15px; letter-spacing:.12em; text-align:center;
+    padding:6px 2px; color:#111;
+  }
+  .adm-card .adm-msg{
+    min-height:15px; margin-top:9px;
+    font-size:9px; letter-spacing:.22em; color:#b04a3c;
+    visibility:hidden;
+  }
+  .adm-card .adm-msg.show{ visibility:visible; }
+  .adm-card .adm-row{ margin-top:10px; display:flex; gap:10px; }
+  .adm-card .adm-btn{
+    flex:1; padding:8px 0; cursor:pointer;
+    border:1px solid rgba(17,17,17,.4); background:#fff;
+    font-size:10px; letter-spacing:.3em; color:#111;
+  }
+  .adm-card .adm-btn.ghost{ opacity:.55; }
   /* 蛇：首页同款真蛇图，拉大铺成「右上 → 左下」的大对角，隐入背景（压在图片框后面），不挡图 */
   .sc-snake{ position:absolute; left:-7%; top:1%; width:114%; height:92%; z-index:1; pointer-events:none; }
   .sc-snake .sc-snk-img{
@@ -1066,6 +1102,18 @@
     <span class="pic-x">点击关闭 ×</span>
   </div>
   <input type="file" id="upInput" accept="image/*" style="display:none"/>
+  <!-- 管理员密钥弹窗：只有输入正确密钥才能上传/删除 -->
+  <div class="adm-veil" id="admVeil">
+    <div class="adm-card">
+      <div class="adm-t">ADMIN · 密钥</div>
+      <input id="admKey" type="password" placeholder="输入密钥" autocomplete="off"/>
+      <div class="adm-msg" id="admMsg">密钥不对</div>
+      <div class="adm-row">
+        <div class="adm-btn ghost" id="admCancel">取消</div>
+        <div class="adm-btn" id="admGo">验证</div>
+      </div>
+    </div>
+  </div>
   <div id="smokeVeil">
     <i class="puff p1"></i><i class="puff p2"></i><i class="puff p3"></i><i class="puff p4"></i>
   </div>
@@ -1513,7 +1561,10 @@
             : { page: CFG.page, key: key, ix: ix, url: dataUrl, rev: rev, created_at: new Date().toISOString() });
           return fetch(base + ((row && row.id != null) ? ('?id=eq.' + encodeURIComponent(row.id)) : ''), {
             method: (row && row.id != null) ? 'PATCH' : 'POST',
-            headers: head({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
+            headers: head(Object.assign(
+              { 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+              (typeof Admin !== 'undefined' && Admin.key()) ? { 'x-admin-key': Admin.key() } : {}
+            )),
             body: body
           });
         })
@@ -1532,12 +1583,81 @@
           var row = list && list[0];
           if(!row || row.id == null) return;
           return fetch(base + '?id=eq.' + encodeURIComponent(row.id), {
-            method: 'DELETE', headers: head({ Prefer: 'return=minimal' })
+            method: 'DELETE', headers: head(Object.assign(
+              { Prefer: 'return=minimal' },
+              (typeof Admin !== 'undefined' && Admin.key()) ? { 'x-admin-key': Admin.key() } : {}
+            ))
           });
         }).catch(function(){});
     }
 
     return { loadAll: loadAll, save: save, forget: forget, compress: compress };
+  })();
+
+  /* ---------- 管理员密钥：只有持有密钥的人能上传/删除，访客只读 ----------
+   * 页面源码里只存密钥的 SHA-256，不存明文。验证通过后记在本机(localStorage)，下次不用再输。 */
+  var Admin = (function(){
+    var HASH = '3c55c82e23e757c64b244702e1cbb43fcdea0e59712e54d9b1e0cb2643aa6585';
+    var KEY_STORE = 'peiban_admin';
+    var KEY_STORE_P = 'peiban_admin_key';
+    var veil = document.getElementById('admVeil');
+    var inp  = document.getElementById('admKey');
+    var msg  = document.getElementById('admMsg');
+    var pending = null;   /* 验证成功后要继续做的事 */
+    function sha256(s){
+      if(!(window.crypto && crypto.subtle && crypto.subtle.digest)) return Promise.reject(new Error('no-subtle'));
+      return crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)).then(function(b){
+        return Array.prototype.map.call(new Uint8Array(b), function(x){ return ('0' + x.toString(16)).slice(-2); }).join('');
+      });
+    }
+    var unlocked = false, plain = '';
+    try {
+      if(localStorage.getItem(KEY_STORE) === HASH){
+        unlocked = true;
+        plain = localStorage.getItem(KEY_STORE_P) || '';
+      }
+    } catch(e){}
+    function show(next){
+      pending = next;
+      inp.value = '';
+      msg.classList.remove('show');
+      veil.classList.add('show');
+      setTimeout(function(){ try{ inp.focus(); }catch(e){} }, 60);
+    }
+    function hide(){ veil.classList.remove('show'); pending = null; }
+    function submit(){
+      var v = inp.value;
+      if(!v) return;
+      sha256(v).then(function(h){
+        if(h === HASH){
+          var fn = pending;                 /* 先取回调再 hide（hide 会清 pending） */
+          unlocked = true;
+          plain = v;
+          try {
+            localStorage.setItem(KEY_STORE, HASH);
+            localStorage.setItem(KEY_STORE_P, v);
+          } catch(e){}
+          hide();
+          if(fn) fn();
+        } else {
+          msg.textContent = '密钥不对';
+          msg.classList.add('show');
+          inp.value = '';
+        }
+      }).catch(function(){
+        msg.textContent = '此浏览器不支持验证';
+        msg.classList.add('show');
+      });
+    }
+    document.getElementById('admGo').addEventListener('click', submit);
+    document.getElementById('admCancel').addEventListener('click', hide);
+    veil.addEventListener('click', function(e){ if(e.target === veil) hide(); });
+    inp.addEventListener('keydown', function(e){ if(e.key === 'Enter') submit(); });
+    return {
+      ok: function(){ return unlocked; },
+      ask: function(next){ if(unlocked){ if(next) next(); } else show(next); },
+      key: function(){ return plain; }   /* 供请求头用；只在验证过的本机内存着，不进源码 */
+    };
   })();
 
   /* ---------- 板评/话术：老板自定义上传图片 ---------- */
@@ -1552,9 +1672,11 @@
         if(im) openPic(im.getAttribute('src'));   /* 已有图：全屏看 */
         return;
       }
-      upBox = box;
-      upInput.value = '';
-      upInput.click();
+      Admin.ask(function(){                       /* 未验证先弹密钥框 */
+        upBox = box;
+        upInput.value = '';
+        upInput.click();
+      });
     });
     box.addEventListener('contextmenu', function(e){ e.preventDefault(); });   /* 长按不弹系统菜单 */
     /* 长按 650ms 清空槽位（本机 + 云端一起删），用于换图 */
@@ -1563,12 +1685,14 @@
       pressT = setTimeout(function(){
         pressT = null;
         if(!box.classList.contains('full')) return;
-        var im = box.querySelector('img'); if(im) im.remove();
-        box.classList.remove('full');
-        justCleared = true;
-        setTimeout(function(){ justCleared = false; }, 500);
-        var ck = box.getAttribute('data-ck'), cx = parseInt(box.getAttribute('data-ix'), 10);
-        if(ck != null && !isNaN(cx)) Cloud.forget(ck, cx);
+        Admin.ask(function(){                     /* 删除同样要密钥 */
+          var im = box.querySelector('img'); if(im) im.remove();
+          box.classList.remove('full');
+          justCleared = true;
+          setTimeout(function(){ justCleared = false; }, 500);
+          var ck = box.getAttribute('data-ck'), cx = parseInt(box.getAttribute('data-ix'), 10);
+          if(ck != null && !isNaN(cx)) Cloud.forget(ck, cx);
+        });
       }, 650);
     });
     ['pointerup','pointerleave','pointercancel'].forEach(function(ev){
@@ -1715,7 +1839,10 @@
   /* 自定义上传图片：按槽位顺序填入（正面→背面） */
   var slots = Array.prototype.slice.call(document.querySelectorAll('#bookZone .pl[data-slot]'));
   var upBtn = document.getElementById('bkUp'), upFile = document.getElementById('bkFile');
-  upBtn.addEventListener('click', function(e){ e.stopPropagation(); upFile.click(); });
+  upBtn.addEventListener('click', function(e){
+    e.stopPropagation();
+    Admin.ask(function(){ upFile.click(); });     /* 书页上传也要密钥 */
+  });
   upFile.addEventListener('change', function(){
     var files = Array.prototype.slice.call(upFile.files || []);
     var si = 0;
