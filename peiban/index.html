@@ -1613,8 +1613,8 @@
         });
       });
     }
-    fillUp('sc', '.ph.up.sc-up');
-    fillUp('rv', '.ph.up.rv-up');
+    fillUp('sc', '.ph.up[data-ck="sc"]');
+    fillUp('rv', '.ph.up[data-ck="rv"]');
     Cloud.loadAll('bk').then(function(map){
       Object.keys(map).forEach(function(ix){
         var s = slots && slots[ix];
