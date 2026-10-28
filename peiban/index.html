@@ -557,8 +557,11 @@
   .sc-f3{ left:6%;    top:198px; width:41%;   height:189px; transform:rotate(-1.4deg); z-index:2; }
   .sc-f4{ left:52.5%; top:314px; width:40.5%; height:138px; transform:rotate(1.4deg);  z-index:2; }
   .sc-f5{ right:5.5%; top:568px; width:40.5%; height:142px; transform:rotate(-1.2deg); z-index:2; }
-  .sc-up1{ left:7%;   top:880px; width:40%;   height:180px; transform:rotate(-1.2deg); z-index:2; }
-  .sc-up2{ left:52%;  top:880px; width:40%;   height:180px; transform:rotate(1.4deg);  z-index:2; }
+  /* 图片再加码：底部两条横向长聊天记录 */
+  .sc-f6{ left:5%;    top:736px; width:90%;   height:120px; transform:rotate(-1deg);  z-index:2; }
+  .sc-f7{ left:5%;    top:884px; width:90%;   height:78px;  transform:rotate(1deg);   z-index:2; }
+  .sc-up1{ left:7%;   top:1010px; width:40%;  height:180px; transform:rotate(-1.2deg); z-index:2; }
+  .sc-up2{ left:52%;  top:1010px; width:40%;  height:180px; transform:rotate(1.4deg);  z-index:2; }
 
   /* 原图卡：截图直接上框，点击全屏看细节（话术页+板评页共用） */
   #page-scripts .ph.pic, #page-reviews .ph.pic{
@@ -609,7 +612,7 @@
   }
   .pg-scroll::-webkit-scrollbar{ display:none; }
   .pg-inner{ position:relative; height:1560px; }   /* 板评默认高 */
-  #page-scripts .pg-inner{ height:1200px; }
+  #page-scripts .pg-inner{ height:1260px; }
   /* 顶部/底部渐隐遮罩：内容滚过标题区时不生硬 */
   .pg-fade{
     position:absolute; left:0; right:0; height:64px; z-index:3; pointer-events:none;
@@ -918,6 +921,8 @@
         <div class="ph pic sc-f2"><b class="hang" style="height:398px"></b><img loading="lazy" decoding="async" src="assets/chat2.jpg" alt="话术二"/></div>
         <div class="ph pic sc-f3"><b class="hang" style="height:209px"></b><img loading="lazy" decoding="async" src="assets/chat3.jpg" alt="话术三"/></div>
         <div class="ph pic sc-f5"><b class="hang" style="height:566px"></b><img loading="lazy" decoding="async" src="assets/chat4.jpg" alt="话术四"/></div>
+        <div class="ph pic sc-f6"><b class="hang" style="height:740px"></b><img loading="lazy" decoding="async" src="assets/chat5.jpg" alt="话术五"/></div>
+        <div class="ph pic sc-f7"><b class="hang" style="height:888px"></b><img loading="lazy" decoding="async" src="assets/chat6.jpg" alt="话术六"/></div>
 
         <!-- 第二屏：老板自定义上传 -->
         <div class="ph up sc-up1" data-ck="sc" data-ix="0"><span class="up-txt">＋ 上传图片</span></div>
@@ -999,7 +1004,7 @@
           <div class="pgb"><div class="pl full" data-slot style="background-image:url('assets/album-april.jpg')">图片 02</div></div>
         </div>
         <div class="book-page" id="bp2">
-          <div class="pgf"><div class="pl" data-slot>图片 03</div></div>
+          <div class="pgf"><div class="pl full" data-slot style="background-image:url('assets/card-top.jpg')">图片 03</div></div>
           <div class="pgb"><div class="pl" data-slot>图片 04</div></div>
         </div>
         <div class="book-page" id="bp3">
