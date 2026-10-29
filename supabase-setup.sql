@@ -14,8 +14,19 @@ grant select on public.cuiyu_slots to anon;
 grant select on public.cuiyu_slots to authenticated;
 
 -- 3) 策略：从「对所有人全开」改成「对所有人只读」
-drop policy if exists cuiyu_slots_all on public.cuiyu_slots;
-drop policy if exists cuiyu_slots_read on public.cuiyu_slots;
+--    先把这张表上所有旧策略通通删掉（不按名字一个个点名，防止有漏网的写策略），
+--    再只建一条 SELECT —— 这样无论以前叫什么名，都不会留下能写的口子。
+do $$
+declare r record;
+begin
+  for r in
+    select policyname from pg_policies
+    where schemaname = 'public' and tablename = 'cuiyu_slots'
+  loop
+    execute format('drop policy if exists %I on public.cuiyu_slots', r.policyname);
+  end loop;
+end $$;
+
 create policy cuiyu_slots_read on public.cuiyu_slots
   for select
   to anon, authenticated
