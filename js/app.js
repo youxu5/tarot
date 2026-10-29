@@ -1306,20 +1306,14 @@
 
     const pick = () => { if (file) file.click(); };
 
-    // 底层上传入口：不露 UI，1.2 秒内连点框 5 次才弹口令（平时点击无反应）
-    let taps = 0, tapTimer = 0;
+    // 上传入口：点一下这个框就弹口令输入，不用连点。
+    // 早期做成「1.2 秒连点 5 次」是想藏住入口，结果老板自己都记不住怎么点开 —— 方便比藏更重要。
     box.addEventListener('click', (e) => {
       e.stopPropagation();                       // 别冒泡到 stage（否则整页收场）
       if (e.target === clear || e.target === pass || e.target === ok || e.target === file) return;
-      if (unlocked) { pick(); return; }
-      taps++;
-      clearTimeout(tapTimer);
-      tapTimer = setTimeout(() => { taps = 0; }, 1200);
-      if (taps >= 5) {
-        taps = 0;
-        box.classList.add('asking');
-        setTimeout(() => { try { pass.focus(); } catch (err) {} }, 60);
-      }
+      if (unlocked) { pick(); return; }          // 已解锁：直接选图，不再问
+      box.classList.add('asking');
+      setTimeout(() => { try { pass.focus(); } catch (err) {} }, 60);
     });
     // 别让输入框里的点击/按键冒到舞台
     ['click', 'keydown', 'keyup', 'input', 'touchstart'].forEach(t => {
@@ -1332,8 +1326,11 @@
       void box.offsetWidth;
       box.classList.add('wrong');
       setTimeout(() => box.classList.remove('wrong'), 420);
-      // 函数没部署时别只抖一下 —— 那会让人以为是自己口令记错了
-      setStatus(Cloud.fnMissing() ? '云端写入函数还没部署' : '口令不对', 2600);
+      // 三种失败要说清楚是哪种，不然只会让人反复怀疑自己记错了口令
+      const why = !Cloud.ready() ? '云端没连上'
+                : Cloud.fnMissing() ? '云端写入函数还没部署'
+                : '口令不对';
+      setStatus(why, 2600);
     };
     // 交给云端函数验口令：错一次就是错，不告诉它错在哪
     const submit = () => {
@@ -1496,7 +1493,7 @@
   }
 
   /* ---------- 画廊：老板自定义 + 云端同步 ----------
-   * 入口与圣杯页一致：1.2 秒内连点格子 5 次 → 口令 → 解锁全站编辑。
+   * 入口与圣杯页一致：点一下格子 → 口令 → 解锁全站编辑。
    * 口令不写在源码里了，交给云端函数去验，验过才解锁。
    * 解锁后：点格子换图（自动压缩、传云端）；点右上 ✕ 移除（连云端一起删）。
    * 云端有图时覆盖 config 里的静态图；云端不通则只在本机生效，不报错。
@@ -1580,12 +1577,13 @@
     // 「口令不对」和「云函数没部署」必须分开报：
     // 混成一句话，你只会反复怀疑自己记错了口令，其实门槛根本没装好。
     const denyGal = (bx) => {
-      const msg = Cloud.fnMissing() ? '云端写入函数还没部署' : '口令不对';
+      const msg = !Cloud.ready() ? '云端没连上'
+                : Cloud.fnMissing() ? '云端写入函数还没部署'
+                : '口令不对';
       if (bx && bx.classList) flashBox(bx, msg);
       else if (typeof alert === 'function') alert(msg);
     };
 
-    let taps = 0, tapTimer = 0;
     gal.addEventListener('click', (e) => {
       const box = e.target.closest('.gbox');
       if (!box) return;
@@ -1603,21 +1601,16 @@
         return;
       }
       if (!galleryUnlocked()) {
-        taps++;
-        clearTimeout(tapTimer);
-        tapTimer = setTimeout(() => { taps = 0; }, 1200);
-        if (taps >= 5) {
-          taps = 0;
-          const raw = (typeof prompt === 'function') ? prompt('请输入编辑口令') : null;
-          const code = String(raw == null ? '' : raw).trim();
-          if (!code) return;
-          Cloud.verify(code).then(good => {
-            if (!good) { denyGal(box); return; }
-            Cloud.setPasscode(code);
-            try { localStorage.setItem(CU_UNLOCK, '1'); localStorage.setItem(CU_PASS, code); } catch (err) {}
-            gal.classList.add('unlocked');
-          }).catch(() => denyGal(box));
-        }
+        // 点一下就问口令，和圣杯页保持一致（不再连点 5 次）
+        const raw = (typeof prompt === 'function') ? prompt('请输入编辑口令') : null;
+        const code = String(raw == null ? '' : raw).trim();
+        if (!code) return;
+        Cloud.verify(code).then(good => {
+          if (!good) { denyGal(box); return; }
+          Cloud.setPasscode(code);
+          try { localStorage.setItem(CU_UNLOCK, '1'); localStorage.setItem(CU_PASS, code); } catch (err) {}
+          gal.classList.add('unlocked');
+        }).catch(() => denyGal(box));
         return;
       }
       pendingBox = box;
