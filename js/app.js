@@ -990,6 +990,50 @@
       try { const j = await r.json(); return Array.isArray(j) ? j : (j ? [j] : []); }
       catch (e) { return []; }
     }
+    /* 写操作一律走云函数 cuiyu-write，不再直接打数据库。
+     * 为什么：数据库已经改成「anon 只能读」，直接打就是 401。
+     * 函数那边拿着 service_role 密钥和口令，两者都不在前端出现过，
+     * 所以别人就算拿到页面里的 anon key，也只能在门外看着。 */
+    const sbFn = () => String(cfg.url).replace(/\/+$/, '') + '/functions/v1/' +
+      (cfg.writeFn || 'cuiyu-write');
+    /* 云函数没部署时，请求会返回 404。这个标记让界面能报「没部署」，
+       而不是笼统说「口令不对」——不然你只会以为是自己记错了口令。 */
+    let fnMissing = false;
+    async function sbCall(body) {
+      const r = await fetch(sbFn(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: cfg.anonKey,                    // 函数默认开 JWT 校验，anon key 是合法 JWT
+          Authorization: 'Bearer ' + cfg.anonKey
+        },
+        body: JSON.stringify(body)
+      });
+      fnMissing = (r.status === 404);
+      let j = null;
+      try { j = await r.json(); } catch (e) { /* 空 body 也算失败 */ }
+      if (!r.ok || !j || !j.ok) {
+        throw new Error('云端 ' + r.status + ' ' + ((j && j.error) || ''));
+      }
+      return j;
+    }
+    /* 解锁口令：只存在内存里，页面刷新后由调用方从 localStorage 回填。
+     * 它不再写进 config.js —— 那里是公开可下载的，等于把钥匙插在门上。 */
+    let pass = '';
+    function setPasscode(p) { pass = String(p || ''); }
+    async function verify(p) {
+      if (!on) {
+        // 云端还没配好时退回本地比对（config 里那时一般是空的 = 一律拒绝）
+        return !!(cfg && cfg.passcode) && String(p) === String(cfg.passcode);
+      }
+      if (mode === 'sb') {
+        try {
+          const j = await withTimeout(sbCall({ action: 'verify', passcode: String(p || '') }), 8000);
+          return !!(j && j.ok);
+        } catch (e) { return false; }
+      }
+      return false;
+    }
 
     async function load(slot) {
       if (!on) return null;
@@ -1092,29 +1136,12 @@
       const url = await blobToDataUrl(blob);
       const rev = Date.now();
       if (mode === 'sb') {
-        let wErr = null;
-        try {
-          const rows = await withTimeout(sbRows(sbSel('id', s.key, s.ix) + '&limit=1'), 9000);
-          const row = rows[0] || null;
-          const body = JSON.stringify(row && row.id != null
-            ? { url: url, rev: rev, updated_at: new Date().toISOString() }
-            : { page: cfg.page, key: s.key, ix: s.ix, url: url, rev: rev, created_at: new Date().toISOString() });
-          let wUrl = sbBase() + ((row && row.id != null) ? ('?id=eq.' + encodeURIComponent(row.id)) : '');
-          wUrl += sbKeyParam(wUrl);
-          const r = await fetch(wUrl, {
-            method: (row && row.id != null) ? 'PATCH' : 'POST',
-            headers: sbHead({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
-            body: body
-          });
-          if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + (await r.text()).slice(0, 120));
-        } catch (e) { wErr = e; }
-        try {                                   // 同样以回读为准，避免"报错其实已写入"的误判
-          const chk = await withTimeout(sbRows(sbSel('rev', s.key, s.ix) + '&limit=1'), 9000);
-          const got = chk[0] || null;
-          if (got && String(got.rev) === String(rev)) return { url: url, rev: rev };
-        } catch (e) { if (!wErr) wErr = e; }
-        throw new Error('Supabase 写入失败：' + ((wErr && wErr.message) || '') +
-          '（多半是表还没建、或 RLS 没放开）');
+        // 数据在服务端用 upsert 落库，成功就返回 ok，不用再回读一遍
+        await withTimeout(sbCall({
+          action: 'save', passcode: pass,
+          page: cfg.page, key: s.key, ix: s.ix, url: url, rev: rev
+        }), 25000);
+        return { url: url, rev: rev };
       }
       if (mode === 'cb') {
         const db = await dbClient();
@@ -1161,12 +1188,10 @@
       if (!on) return Promise.resolve();
       const s = slot || D();
       if (mode === 'sb') {
-        return withTimeout(sbRows(sbSel('id', s.key, s.ix)), 8000)
-          .then(rows => Promise.all(rows.map(row => (row && row.id != null)
-            ? fetch(sbBase() + '?id=eq.' + encodeURIComponent(row.id) + '&apikey=' + encodeURIComponent(cfg.anonKey),
-                { method: 'DELETE', headers: sbHead() }).catch(() => {})
-            : null)))
-          .catch(() => {});
+        return withTimeout(sbCall({
+          action: 'remove', passcode: pass,
+          page: cfg.page, key: s.key, ix: s.ix
+        }), 12000).catch(() => {});
       }
       if (mode === 'cb') {
         return dbClient()
@@ -1186,7 +1211,10 @@
         .catch(() => {});
     }
 
-    return { init, ready, load, loadAll, save, remove };
+    return {
+      init, ready, load, loadAll, save, remove, setPasscode, verify,
+      fnMissing: () => fnMissing      // 云函数部署了没有
+    };
   })();
 
   /* 选图 → 压成限定边长的 jpeg（画廊/圣杯页共用） */
@@ -1214,6 +1242,7 @@
   /* ---------- 圣杯页：老板专属上传画布（口令解锁；云端优先，本机兜底） ---------- */
   const CU_KEY = 'cuiyu_cup_upload_img';
   const CU_UNLOCK = 'cuiyu_cup_upload_unlocked';
+  const CU_PASS = 'cuiyu_cup_upload_pass';
   function setupCupUpload(stage, king) {
     const box = stage.querySelector('.cup-upload');
     if (!box) return;
@@ -1223,9 +1252,13 @@
     const pass = box.querySelector('.cu-pass');
     const ok = box.querySelector('.cu-ok');
     const clear = box.querySelector('.cu-clear');
-    const code = String(king.uploadPasscode != null ? king.uploadPasscode : '');
+    // 口令不写在 config 里了（那里公开可下载，等于把钥匙插在门上）。
+    // 之前在这台设备解锁过的话，从本机取回；否则要用户现输，交给云端函数验。
     let unlocked = false;
     try { unlocked = localStorage.getItem(CU_UNLOCK) === '1'; } catch (e) {}
+    let savedPass = '';
+    try { savedPass = localStorage.getItem(CU_PASS) || ''; } catch (e) {}
+    if (savedPass) Cloud.setPasscode(savedPass);
     let saved = '';
     try { saved = localStorage.getItem(CU_KEY) || ''; } catch (e) {}
     if (!saved && king.cupCloudPhoto) saved = king.cupCloudPhoto;   // 没有本地上传图就用静态云端照片
@@ -1293,20 +1326,30 @@
       lock.addEventListener(t, (e) => e.stopPropagation());
     });
 
+    const deny = () => {
+      pass.value = '';
+      box.classList.remove('wrong');
+      void box.offsetWidth;
+      box.classList.add('wrong');
+      setTimeout(() => box.classList.remove('wrong'), 420);
+      // 函数没部署时别只抖一下 —— 那会让人以为是自己口令记错了
+      setStatus(Cloud.fnMissing() ? '云端写入函数还没部署' : '口令不对', 2600);
+    };
+    // 交给云端函数验口令：错一次就是错，不告诉它错在哪
     const submit = () => {
-      if (String(pass.value || '').trim() === code) {
+      const v = String(pass.value || '').trim();
+      if (!v) return;
+      box.classList.add('waiting');
+      Cloud.verify(v).then(good => {
+        box.classList.remove('waiting');
+        if (!good) { deny(); return; }
         unlocked = true;
-        try { localStorage.setItem(CU_UNLOCK, '1'); } catch (e) {}
+        Cloud.setPasscode(v);
+        try { localStorage.setItem(CU_UNLOCK, '1'); localStorage.setItem(CU_PASS, v); } catch (e) {}
         box.classList.remove('asking');
         pass.value = '';
         pick();
-      } else {
-        pass.value = '';
-        box.classList.remove('wrong');
-        void box.offsetWidth;
-        box.classList.add('wrong');
-        setTimeout(() => box.classList.remove('wrong'), 420);
-      }
+      }).catch(() => { box.classList.remove('waiting'); deny(); });
     };
     if (ok) ok.addEventListener('click', (e) => { e.stopPropagation(); submit(); });
     if (pass) pass.addEventListener('keydown', (e) => {
@@ -1453,15 +1496,11 @@
   }
 
   /* ---------- 画廊：老板自定义 + 云端同步 ----------
-   * 入口与圣杯页一致：1.2 秒内连点格子 5 次 → 口令 520 → 解锁全站编辑。
+   * 入口与圣杯页一致：1.2 秒内连点格子 5 次 → 口令 → 解锁全站编辑。
+   * 口令不写在源码里了，交给云端函数去验，验过才解锁。
    * 解锁后：点格子换图（自动压缩、传云端）；点右上 ✕ 移除（连云端一起删）。
    * 云端有图时覆盖 config 里的静态图；云端不通则只在本机生效，不报错。
    */
-  function galleryPasscode() {
-    const ks = (CONFIG.reveal && CONFIG.reveal.kings) || [];
-    for (const k of ks) { if (k.uploadPasscode) return String(k.uploadPasscode); }
-    return '520';
-  }
   function galleryUnlocked() {
     try { return localStorage.getItem(CU_UNLOCK) === '1'; } catch (e) { return false; }
   }
@@ -1504,8 +1543,13 @@
       });
     }
 
-    // 解锁状态先恢复一次（刷新后仍生效）
-    if (galleryUnlocked()) gal.classList.add('unlocked');
+    // 解锁状态先恢复一次（刷新后仍生效），顺带把口令取回来 —— 不然刷新后就传不上去了
+    if (galleryUnlocked()) {
+      gal.classList.add('unlocked');
+      let sp = '';
+      try { sp = localStorage.getItem(CU_PASS) || ''; } catch (e) {}
+      if (sp) Cloud.setPasscode(sp);
+    }
 
     // 隐藏的文件选择器（全画廊共用一个）
     const input = document.createElement('input');
@@ -1533,6 +1577,14 @@
       }).catch(err => console.warn('[画廊压缩失败]', err));
     });
 
+    // 「口令不对」和「云函数没部署」必须分开报：
+    // 混成一句话，你只会反复怀疑自己记错了口令，其实门槛根本没装好。
+    const denyGal = (bx) => {
+      const msg = Cloud.fnMissing() ? '云端写入函数还没部署' : '口令不对';
+      if (bx && bx.classList) flashBox(bx, msg);
+      else if (typeof alert === 'function') alert(msg);
+    };
+
     let taps = 0, tapTimer = 0;
     gal.addEventListener('click', (e) => {
       const box = e.target.closest('.gbox');
@@ -1556,11 +1608,15 @@
         tapTimer = setTimeout(() => { taps = 0; }, 1200);
         if (taps >= 5) {
           taps = 0;
-          const code = (typeof prompt === 'function') ? prompt('请输入编辑口令') : null;
-          if (code != null && String(code).trim() === galleryPasscode()) {
-            try { localStorage.setItem(CU_UNLOCK, '1'); } catch (err) {}
+          const raw = (typeof prompt === 'function') ? prompt('请输入编辑口令') : null;
+          const code = String(raw == null ? '' : raw).trim();
+          if (!code) return;
+          Cloud.verify(code).then(good => {
+            if (!good) { denyGal(box); return; }
+            Cloud.setPasscode(code);
+            try { localStorage.setItem(CU_UNLOCK, '1'); localStorage.setItem(CU_PASS, code); } catch (err) {}
             gal.classList.add('unlocked');
-          }
+          }).catch(() => denyGal(box));
         }
         return;
       }

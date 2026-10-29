@@ -29,7 +29,7 @@ const CONFIG = {
       ix: 0,
       // 写入口令：必须与云端函数 cuiyu_set_slot / cuiyu_del_slot 里校验的一致。
       // 只改这里不会生效——云端还会再校验一次，两边要一起改。
-      passcode: '520'
+      passcode: ''
     } : null;
   })(),
 
@@ -39,6 +39,7 @@ const CONFIG = {
    * GitHub Pages 那份就能读到同一份数据 —— 客人、老板共用一个链接。
    */
   supabase: {
+    writeFn: 'cuiyu-write',   // 云函数名：所有写操作都走它，别改名字
     url: 'https://udbtfhwmtlylkcolxmhf.supabase.co',
     anonKey: 'sb_publishable_F0nSwoHFgsPRMh4n8HCBVg__M8lgts1',
     table: 'cuiyu_slots',
@@ -151,7 +152,7 @@ const CONFIG = {
         // 云端照片：老板的照片直接放进 assets 再把文件名填这里（上传入口已隐藏，走云端）
         cupCloudPhoto: '',
         // 底层上传口令（隐藏入口：连点黑框 5 次弹出），平时用不上
-        uploadPasscode: '520',
+        uploadPasscode: '',
         cupPhoto: 'assets/cups-photo.jpg',
         // 金杯注酒 AI 视频素材：二维动漫风、纯黑底 + screen 混合 = 抠好透明
         cupVideo: 'assets/cups-2d-black.mp4',   // 背景压成纯黑的版本，screen 混合下只留金杯

@@ -5,3 +5,4 @@ _dbg*
 .DS_Store
 .workbuddy/
 *.genie
+.playwright-cli/
